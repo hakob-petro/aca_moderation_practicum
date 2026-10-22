@@ -60,4 +60,5 @@ not depend on each other, so you can always start the next one.
 **After the session,** stop your server: Compute Engine → VM instances → `ws`
 → **Stop**. Your files stay; programs that were running stop.
 
-Anything you did not finish, you can do in the open lab.
+Anything you did not finish, finish at home before the next session: each
+mission's `./check` still works.

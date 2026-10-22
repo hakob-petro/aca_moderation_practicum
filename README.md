@@ -15,6 +15,27 @@ Docker, cloud GPUs and a coding agent.
 
 ---
 
+## The Kaggle competition
+
+The task you train your model on comes from a real machine-learning competition:
+**[Jigsaw – Agile Community Rules Classification](https://www.kaggle.com/competitions/jigsaw-agile-community-rules)**,
+run on Kaggle by Jigsaw, a unit of Google, in 2025.
+
+Each example is a Reddit comment, one of that community's rules, and a few
+example comments that do and do not break the rule. The task is to predict the
+probability that the comment breaks the rule. Submissions are scored by AUC:
+1.0 is perfect, 0.5 is guessing.
+
+What makes it interesting is that the training data has only two rules ("No
+advertising" and "No legal advice"), while the hidden test set adds rules the
+model has never seen. That is exactly what a real moderation service faces
+when a new community joins with its own rules. 2,445 teams took part, and the
+best scored about 0.93. The competition has ended, but Kaggle still scores late
+submissions, so in Session 4 you will submit your own model and see where it
+would have placed.
+
+---
+
 ## Before the first session
 
 Follow **[setup/STUDENT_SETUP.md](setup/STUDENT_SETUP.md)**. It takes about
@@ -59,7 +80,7 @@ work, but you must be able to answer the card's two "why" questions.
 come.
 
 **Out of time?** Run `./catchup N` to start the next mission with everyone
-else. You can finish the missed one in the open lab.
+else. Finish the missed one at home: its `./check` still works.
 
 **Teams.** You work on your own server, but in a team of four with a captain.
 Your team shares a GitHub repository, a row on the board, and an opponent in
@@ -67,15 +88,20 @@ the final session's game.
 
 ---
 
-## Between sessions: the open lab
+## Between sessions: at home
 
-There is a supervised open lab between sessions. Use it to finish missions,
-do homework cards from `homework/`, and complete sign-ups that need
-verification. Homework is optional; nothing in a session depends on it.
+Between sessions you work at home, on your own:
 
-One sign-up must be done in an open lab, because its phone verification can
-take time: before Session 4, a Kaggle account, verified with your phone, and
-joined to the Jigsaw competition.
+- finish any mission you ran out of time for; its `./check` still works
+- do the homework cards in `homework/`
+- complete the sign-ups the next session needs
+
+Homework is independent work. Nothing in a session depends on it, and it counts
+towards your grade.
+
+One sign-up takes time because of phone verification, so do it early: before
+Session 4, a Kaggle account, verified with your phone, and joined to the Jigsaw
+competition.
 
 ---
 
@@ -89,7 +115,7 @@ All free.
 | Google Cloud free trial | before Session 1, from the setup guide |
 | OpenCode Zen, Google AI Studio key | Session 1 |
 | Modal | Session 3 |
-| Kaggle | open lab before Session 4 |
+| Kaggle | at home, before Session 4 |
 | OpenRouter | homework |
 
 ---

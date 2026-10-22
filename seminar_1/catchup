@@ -5,7 +5,7 @@ case "${1:-}" in
   1|2|3|4)
     echo "Seminar 1's missions do not depend on each other."
     echo "Start mission $1 straight away: open mission_$1.md."
-    echo "You can finish the one you skipped in the open lab." ;;
+    echo "Finish the one you skipped at home before the next session." ;;
   *)
     echo "Usage: ./catchup N   (N = 1, 2, 3 or 4)"; exit 2 ;;
 esac
