@@ -101,12 +101,18 @@ When it finishes, you have **$300 of credit for 90 days** and a project called
 This emails you if spending ever looks wrong, for example a server you forgot
 about.
 
-1. In the search bar at the top of the console, type **Budgets & alerts** and
+1. In the search bar at the top of the console, type **Budgets & caps** and
    open it.
 2. Click **Create budget**.
-3. Name: `course`. Click **Next** until you reach **Amount**.
-4. Target amount: **50** (dollars). Click **Next**.
-5. Leave the alert thresholds at 50%, 90% and 100%. Click **Finish**.
+3. Under **Define**, choose **Alerts only**. Do **not** choose *Spend cap
+   enforcement*: a cap pauses your server when it is reached.
+4. Name: `course`. Click **Next**.
+5. Under **Scope**, leave **Services** on its default (all services). Under
+   **Savings**, untick **Promotions and others**. Your $300 free credit pays
+   for everything, so with it ticked your spending always shows as $0 and the
+   alert never fires. Click **Next**.
+6. Target amount: **30** (dollars). Click **Next**.
+7. Leave the alert thresholds at 50%, 90% and 100%. Click **Finish**.
 
 ---
 
