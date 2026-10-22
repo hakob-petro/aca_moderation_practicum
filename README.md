@@ -19,7 +19,7 @@ Docker, cloud GPUs and a coding agent.
 
 Follow **[setup/STUDENT_SETUP.md](setup/STUDENT_SETUP.md)**. It takes about
 45–60 minutes: you create a GitHub account, rent a free cloud server, connect
-to it and install everything. Do it at least two days before Session 1. If you
+to it and install the basic tools. Do it at least two days before Session 1. If you
 get stuck, do what you can and bring your laptop; we finish it together at the
 start.
 

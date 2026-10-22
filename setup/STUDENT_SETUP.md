@@ -1,7 +1,7 @@
 # Before the first lesson: set up your workspace
 
 You are going to rent your own Linux server in the cloud, connect to it from
-your laptop, and install everything the course uses. It is free: Google Cloud
+your laptop, and install the basic tools the course uses. It is free: Google Cloud
 gives new accounts $300 of credit for 90 days, and this server will use roughly
 $10–30 of it over the whole course.
 
@@ -190,7 +190,7 @@ on your server, not your laptop.
 
 ---
 
-## Step 7. Install everything
+## Step 7. Install the basic tools
 
 Still on your server, paste this one line and press Enter:
 
@@ -198,8 +198,9 @@ Still on your server, paste this one line and press Enter:
 curl -fsSL https://raw.githubusercontent.com/hakob-petro/aca_moderation_practicum/main/setup/bootstrap.sh | bash
 ```
 
-It installs Docker, git, GitHub CLI, tmux, uv, OpenCode, and the Modal and
-Kaggle tools. It takes about five minutes, and it asks for nothing. It is safe
+It installs Docker, git, GitHub CLI, tmux and nano, the tools that need
+administrator rights. You will install the rest yourself during the lessons.
+It takes about five minutes, and it asks for nothing. It is safe
 to run again if anything fails halfway.
 
 When it says **Done**, log out and back in, so your new permissions apply:

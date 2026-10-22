@@ -4,11 +4,11 @@
 #   curl -fsSL https://raw.githubusercontent.com/hakob-petro/aca_moderation_practicum/main/setup/bootstrap.sh | bash
 #
 # Run as your normal user, not root. Safe to run again after a failure.
-# Pin versions below once you have tested them; empty means "latest".
+#
+# Installs only what needs sudo: git, tmux, nano, Docker, GitHub CLI.
+# Students install OpenCode, uv, Modal and Kaggle themselves during the
+# lessons, each when first needed.
 set -euo pipefail
-
-MODAL_VERSION=""
-KAGGLE_VERSION=""
 
 if [ "$(id -u)" -eq 0 ]; then
   echo "Run this as your normal user, without sudo in front." >&2
@@ -50,27 +50,12 @@ if ! command -v gh >/dev/null; then
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gh >/dev/null
 fi
 
-say "uv"
-if [ ! -x "$HOME/.local/bin/uv" ]; then
-  curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null
-fi
-export PATH="$HOME/.local/bin:$PATH"
-
-say "Modal and Kaggle command-line tools"
-uv tool install --force "modal${MODAL_VERSION:+==$MODAL_VERSION}" >/dev/null
-uv tool install --force "kaggle${KAGGLE_VERSION:+==$KAGGLE_VERSION}" >/dev/null
-
-say "OpenCode"
-if ! command -v opencode >/dev/null && [ ! -x "$HOME/.opencode/bin/opencode" ]; then
-  curl -fsSL https://opencode.ai/install | bash >/dev/null
-fi
-
 say "The ws-check command"
 mkdir -p "$HOME/.local/bin"
 cat > "$HOME/.local/bin/ws-check" <<'CHECK'
 #!/usr/bin/env bash
-# Prints PASS or FAIL for everything the course needs on this server.
-export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
+# Prints PASS or FAIL for everything the course needs on this server
+# before Session 1.
 pass=0; fail=0
 ok()  { printf 'PASS  %-9s %s\n' "$1" "$2"; pass=$((pass + 1)); }
 bad() { printf 'FAIL  %-9s %s\n' "$1" "$2"; fail=$((fail + 1)); }
@@ -90,7 +75,7 @@ else bad disk "$free_gb GB free (expected a 30 GB disk)"; fi
 if swapon --show | grep -q .; then ok swap "$(free -h | awk '/Swap/ {print $2}')"
 else bad swap "none: run the setup script again"; fi
 
-for c in git nano gh uv opencode modal kaggle; do
+for c in git nano gh; do
   if command -v "$c" >/dev/null 2>&1; then
     ver=$("$c" --version 2>/dev/null | head -n 1)
     ok "$c" "${ver:-installed}"
