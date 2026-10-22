@@ -1,0 +1,384 @@
+<!doctype html>
+<!--
+  Source of ../how_ssh_works.pdf. To rebuild, from this folder:
+    google-chrome --headless --no-pdf-header-footer --print-to-pdf=../how_ssh_works.pdf how_ssh_works.html
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How SSH works</title>
+<style>
+  @page {
+    size: A4;
+    margin: 16mm 17mm 20mm 17mm;
+    @bottom-left   { content: "Moderation practicum \00B7  Seminar 1"; font: 8pt 'Liberation Sans', sans-serif; color: #5b6470; }
+    @bottom-right  { content: counter(page) " / " counter(pages); font: 8pt 'Liberation Sans', sans-serif; color: #5b6470; }
+  }
+  :root {
+    --text: #1b1f24; --muted: #5b6470; --line: #d5dae1; --soft: #f3f5f8;
+    --blue: #1f5fbf; --blue-soft: #e8f0fc;
+    --red: #b4361f;  --red-soft: #fcebe7;
+    --green: #1d7a4b; --green-soft: #e6f4ec;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; color: var(--text); background: #fff;
+         font: 10pt/1.4 'Liberation Sans', 'DejaVu Sans', sans-serif; }
+  h1 { font-size: 26pt; line-height: 1.1; margin: 0 0 4pt; letter-spacing: -0.5pt; }
+  .sub { font-size: 12pt; color: var(--muted); margin: 0 0 14pt; }
+  h2 { font-size: 14pt; margin: 15pt 0 5pt; padding-top: 8pt; border-top: 1.5pt solid var(--text);
+       break-after: avoid; }
+  h2 .num { color: var(--blue); margin-right: 6pt; }
+  h3 { font-size: 10.5pt; margin: 12pt 0 3pt; break-after: avoid; }
+  p { margin: 0 0 6pt; }
+  ul, ol { margin: 0 0 8pt; padding-left: 16pt; }
+  li { margin-bottom: 2pt; }
+  code, .mono { font-family: 'DejaVu Sans Mono', monospace; font-size: 8.6pt; }
+  code { background: var(--soft); border: 0.5pt solid var(--line); border-radius: 2pt; padding: 0 2.5pt; }
+  pre { font: 8.6pt/1.4 'DejaVu Sans Mono', monospace; background: var(--soft); border: 0.5pt solid var(--line);
+        border-radius: 3pt; padding: 6pt 8pt; margin: 4pt 0 8pt; white-space: pre-wrap; break-inside: avoid; }
+  .box { border: 1pt solid var(--blue); background: var(--blue-soft); border-radius: 4pt;
+         padding: 8pt 11pt 4pt; margin: 6pt 0 10pt; break-inside: avoid; }
+  .box h3 { margin-top: 0; color: var(--blue); }
+  .note { border-left: 3pt solid var(--line); padding: 1pt 0 1pt 9pt; color: var(--muted); margin: 6pt 0 9pt; break-inside: avoid; }
+  .two { display: flex; gap: 10pt; margin: 6pt 0 10pt; }
+  .card { flex: 1; border-radius: 4pt; padding: 8pt 10pt 3pt; break-inside: avoid; }
+  .card h3 { margin: 0 0 3pt; }
+  .priv { background: var(--red-soft);   border: 1pt solid var(--red); }
+  .priv h3 { color: var(--red); }
+  .pub  { background: var(--green-soft); border: 1pt solid var(--green); }
+  .pub h3 { color: var(--green); }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; margin: 4pt 0 10pt;
+          border: 0.5pt solid var(--line); break-inside: auto; }
+  table.keep { break-inside: avoid; }
+  th, td { border-right: 0.5pt solid var(--line); border-bottom: 0.5pt solid var(--line);
+           padding: 3pt 6pt; text-align: left; vertical-align: top; }
+  th:last-child, td:last-child { border-right: 0; }
+  tbody tr:last-child td { border-bottom: 0; }
+  thead { display: table-header-group; }
+  th { background: var(--soft); font-size: 9pt; }
+  tr { break-inside: avoid; }
+  td:first-child { width: 31%; }
+  figure { margin: 8pt 0 10pt; break-inside: avoid; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: 8.5pt; color: var(--muted); margin-top: 3pt; }
+  dl { margin: 4pt 0; display: grid; grid-template-columns: 30% 1fr; column-gap: 8pt; row-gap: 3pt; }
+  dt { font-weight: bold; }
+  dd { margin: 0; }
+  .steps { counter-reset: s; list-style: none; padding-left: 0; }
+  .steps li { counter-increment: s; position: relative; padding-left: 22pt; margin-bottom: 6pt; break-inside: avoid; }
+  .steps li::before { content: counter(s); position: absolute; left: 0; top: 0.5pt; width: 14pt; height: 14pt;
+        border-radius: 50%; background: var(--blue); color: #fff; font-weight: bold; font-size: 8.5pt;
+        text-align: center; line-height: 14pt; }
+</style>
+</head>
+<body>
+
+<h1>How SSH works</h1>
+<p class="sub">What happens when you type <code>ssh ws</code>, and what your two keys are for.</p>
+
+<div class="box">
+  <h3>The one-minute version</h3>
+  <ul>
+    <li>SSH opens a terminal on a faraway computer, and keeps everything you type and see <b>private</b> on the way.</li>
+    <li>You make a <b>key pair</b>: a <b>private key</b> that never leaves your laptop, and a <b>public key</b> you give to the server.</li>
+    <li>To log in, your laptop <b>proves it holds the private key</b> without ever sending it. No password travels anywhere.</li>
+    <li>The server also proves who it is, so you know you are talking to <i>your</i> server and not an impostor.</li>
+  </ul>
+</div>
+
+<h2><span class="num">1</span>Why SSH exists</h2>
+<p>Your course server is a computer in a data centre in Iowa. It has no keyboard or screen you can reach. <b>SSH</b> (Secure Shell) lets your laptop open a terminal on that computer across the internet: what you type goes to the server, and its output comes back to your screen.</p>
+<p>The internet is not private. Your data passes through many machines that belong to other people. The old tools for remote terminals, such as <code>telnet</code>, sent everything, passwords included, as plain text. SSH fixes two problems:</p>
+<ul>
+  <li><b>Privacy.</b> The traffic is encrypted. Someone in the middle sees only noise.</li>
+  <li><b>Identity.</b> Each side checks who the other is. You check that this is really your server, and the server checks that you are really you.</li>
+</ul>
+
+<h2><span class="num">2</span>Two keys, one idea</h2>
+<p>A <b>key pair</b> is created together, in one command (<code>ssh-keygen</code>). It gives you two files that are mathematically linked:</p>
+
+<div class="two">
+  <div class="card priv">
+    <h3>Private key: <span class="mono">id_ed25519</span></h3>
+    <ul>
+      <li>Stays on your laptop, always.</li>
+      <li>Never send it, paste it, email it or commit it.</li>
+      <li>It lets you <b>prove who you are</b>.</li>
+    </ul>
+  </div>
+  <div class="card pub">
+    <h3>Public key: <span class="mono">id_ed25519.pub</span></h3>
+    <ul>
+      <li>One line of text. Safe to share with anyone.</li>
+      <li>You paste it into servers (and GitHub) that should let you in.</li>
+      <li>It lets others <b>check your proof</b>, but not make it.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>An analogy: the specimen signature at a bank</h3>
+<p>When you open a bank account, the bank keeps a <b>specimen of your signature</b>. Later, anyone can compare a signature on a cheque with the specimen, but only you can <i>produce</i> a matching signature. The specimen is your <b>public key</b>. Your hand, and its ability to sign, is your <b>private key</b>. The difference from a real signature: a digital signature cannot be forged, and the specimen reveals nothing that would help to copy it.</p>
+<p>What really happens is a <b>digital signature</b>. Something signed with the private key can be verified with the public key. The public key cannot create signatures, and the private key cannot be worked out from it. The kind of key we use, <b>Ed25519</b>, is a modern, short and fast signature scheme.</p>
+
+<h3>Why this beats a password</h3>
+<table class="keep">
+  <thead><tr><th></th><th>Password</th><th>Key pair</th></tr></thead>
+  <tbody>
+  <tr><td>What the server stores</td><td>Something that can check your secret. If it leaks, the secret is exposed.</td><td>Only your <b>public</b> key. Useless to a thief.</td></tr>
+  <tr><td>What crosses the network</td><td>The secret itself (inside the encrypted channel).</td><td>Only a signature, good for this one connection.</td></tr>
+  <tr><td>Guessing</td><td>People pick guessable passwords, and bots try millions of them.</td><td>A 256-bit key cannot be guessed.</td></tr>
+  <tr><td>Convenience</td><td>You type it every time.</td><td>Nothing to type.</td></tr>
+  </tbody>
+</table>
+
+<h2><span class="num">3</span>What happens when you type <code>ssh ws</code></h2>
+<figure>
+<svg viewBox="0 0 760 500" role="img" aria-label="Sequence diagram of an SSH login between your laptop and your server">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1b1f24"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: 'Liberation Sans','DejaVu Sans',sans-serif; fill: #1b1f24; }
+    .t  { font-size: 13px; }
+    .tb { font-size: 13px; font-weight: bold; }
+    .n  { font-size: 11.5px; fill: #5b6470; }
+    .m  { font-family: 'DejaVu Sans Mono',monospace; font-size: 10.5px; fill: #5b6470; }
+    .ln { stroke: #1b1f24; stroke-width: 1.4; marker-end: url(#a); }
+    .ln2{ stroke: #1b1f24; stroke-width: 1.4; marker-end: url(#a); marker-start: url(#a); }
+    .life{ stroke: #9aa3ae; stroke-width: 1.2; stroke-dasharray: 4 4; }
+  </style>
+
+  <!-- participants -->
+  <rect x="100" y="8" width="180" height="46" rx="6" fill="#e8f0fc" stroke="#1f5fbf" stroke-width="1.3"/>
+  <text x="190" y="28" text-anchor="middle" class="tb">Your laptop</text>
+  <text x="190" y="44" text-anchor="middle" class="n">the SSH client</text>
+  <rect x="480" y="8" width="180" height="46" rx="6" fill="#e8f0fc" stroke="#1f5fbf" stroke-width="1.3"/>
+  <text x="570" y="28" text-anchor="middle" class="tb">Your server (ws)</text>
+  <text x="570" y="44" text-anchor="middle" class="n">sshd, listening on port 22</text>
+  <line x1="190" y1="54" x2="190" y2="488" class="life"/>
+  <line x1="570" y1="54" x2="570" y2="488" class="life"/>
+
+  <!-- 0: config -->
+  <text x="6" y="82" class="n">Reads ~/.ssh/config:</text>
+  <text x="6" y="95" class="n">ws = 34.123.45.67,</text>
+  <text x="6" y="108" class="n">user ani, key id_ed25519</text>
+
+  <!-- 1 -->
+  <line x1="190" y1="100" x2="570" y2="100" class="ln"/>
+  <text x="380" y="92" text-anchor="middle" class="t">① Open a connection to port 22</text>
+
+  <!-- 2 -->
+  <line x1="570" y1="150" x2="190" y2="150" class="ln"/>
+  <text x="380" y="142" text-anchor="middle" class="t">② "Here is my host public key"</text>
+  <text x="6" y="140" class="n">First time: asks "Are you</text>
+  <text x="6" y="153" class="n">sure?" and saves it in</text>
+  <text x="6" y="166" class="n">~/.ssh/known_hosts.</text>
+  <text x="6" y="179" class="n">Later: compares with it.</text>
+
+  <!-- 3 -->
+  <line x1="190" y1="205" x2="570" y2="205" class="ln2"/>
+  <text x="380" y="197" text-anchor="middle" class="t">③ Agree on a secret session key</text>
+  <text x="380" y="221" text-anchor="middle" class="n">the server signs the exchange with its host key</text>
+  <text x="586" y="200" class="n">Signs with its private</text>
+  <text x="586" y="213" class="n">host key.</text>
+
+  <!-- encrypted band -->
+  <rect x="2" y="236" width="756" height="254" rx="8" fill="#e6f4ec" stroke="#1d7a4b" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.55"/>
+  <text x="12" y="254" class="tb" style="fill:#1d7a4b">Everything from here on is encrypted with the session key</text>
+
+  <!-- 4 -->
+  <line x1="190" y1="292" x2="570" y2="292" class="ln"/>
+  <text x="380" y="283" text-anchor="middle" class="t">④ "I am ani. Let me in with this public key"</text>
+  <text x="6" y="288" class="n">config said: user ani.</text>
+
+  <!-- 5 -->
+  <line x1="570" y1="345" x2="190" y2="345" class="ln"/>
+  <text x="380" y="336" text-anchor="middle" class="t">⑤ "It is in my list. Prove you own it"</text>
+  <text x="586" y="336" class="n">Looks the key up in</text>
+  <text x="586" y="349" class="n">~/.ssh/authorized_keys.</text>
+
+  <!-- 6 -->
+  <line x1="190" y1="397" x2="570" y2="397" class="ln"/>
+  <text x="380" y="388" text-anchor="middle" class="t">⑥ A signature, made with the private key</text>
+  <text x="380" y="412" text-anchor="middle" class="n">the key itself never travels; the signature is only good for this connection</text>
+  <text x="6" y="380" class="n">Signs with id_ed25519</text>
+  <text x="6" y="393" class="n">(your private key).</text>
+
+  <!-- 7 -->
+  <line x1="570" y1="442" x2="190" y2="442" class="ln"/>
+  <text x="380" y="433" text-anchor="middle" class="t">⑦ Signature checks out: "Welcome, ani"</text>
+  <text x="586" y="428" class="n">Checks it against your</text>
+  <text x="586" y="441" class="n">public key.</text>
+
+  <!-- 8 -->
+  <line x1="190" y1="474" x2="570" y2="474" class="ln2"/>
+  <text x="380" y="466" text-anchor="middle" class="t">⑧ Your terminal: keystrokes in, output out</text>
+</svg>
+<figcaption>One SSH login, step by step. Dashed vertical lines are time moving down; each arrow is a message.</figcaption>
+</figure>
+
+<ol class="steps">
+  <li><b>Look up the nickname.</b> <code>ws</code> is not a real address. Your laptop reads <code>~/.ssh/config</code> and finds the real IP, the user name and the key to use. (Typing <code>ssh ani@34.123.45.67</code> does the same without the nickname.) Then it connects to <b>port 22</b>, the standard SSH port. If the server is stopped, or a firewall blocks the port, you wait and get <i>Connection timed out</i>.</li>
+  <li><b>The server shows who it is.</b> Every server has its own <b>host key pair</b>, made when it was first set up. It sends the public half. The first time you connect, your laptop cannot know whether this is the right server, so it asks <i>"Are you sure you want to continue connecting?"</i> and, when you say <code>yes</code>, stores the key's <b>fingerprint</b> (a short hash of it) in <code>~/.ssh/known_hosts</code>. From then on it checks automatically.</li>
+  <li><b>Agree on a secret, then encrypt.</b> The two sides run a <b>key exchange</b> (Diffie&ndash;Hellman): each sends a little public information, and from it both compute the <i>same</i> secret <b>session key</b>, which is never sent over the network. The server <b>signs</b> the exchange with its host key, so you know the one you agreed the secret with is the real server. From now on, everything is encrypted with the session key using a fast <b>symmetric cipher</b>. (Public-key maths is slow, so it is used only to set up and to prove identity; the session key does the bulk work.)</li>
+  <li><b>You say who you are.</b> Your laptop sends the user name and offers a public key. The server looks in that user's <code>~/.ssh/authorized_keys</code> file, the list of public keys allowed to log in.</li>
+  <li><b>You prove it.</b> If the key is listed, the server asks you to prove you own the private half. Your laptop <b>signs</b> a value tied to this very connection and sends the signature. The private key itself never leaves your laptop, and a recorded signature is useless later because it only fits this one connection.</li>
+  <li><b>You are in.</b> The server checks the signature against your public key and starts a shell for you. The prompt changes to <code>ani@ws:~$</code>: everything you type now runs on the server.</li>
+</ol>
+
+<h2><span class="num">4</span>Who trusts whom: two directions</h2>
+<p>SSH checks identity <b>both ways</b>, and each direction uses its own pair of keys and its own file:</p>
+<figure>
+<svg viewBox="0 0 760 330" role="img" aria-label="Where the keys and trust files live on the laptop and the server">
+  <defs>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1f5fbf"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: 'Liberation Sans','DejaVu Sans',sans-serif; fill: #1b1f24; }
+    .h  { font-size: 14px; font-weight: bold; }
+    .nm { font-family: 'DejaVu Sans Mono',monospace; font-size: 11.5px; font-weight: bold; }
+    .d  { font-size: 11px; fill: #5b6470; }
+    .tg { font-size: 9.5px; font-weight: bold; fill: #fff; }
+    .al { font-size: 11px; fill: #1f5fbf; font-weight: bold; }
+    .arr{ stroke: #1f5fbf; stroke-width: 2.2; marker-end: url(#b); }
+  </style>
+
+  <!-- laptop -->
+  <rect x="10" y="8" width="290" height="314" rx="8" fill="#fff" stroke="#9aa3ae" stroke-width="1.3"/>
+  <text x="24" y="32" class="h">Your laptop</text>
+  <text x="140" y="32" class="d">the folder ~/.ssh/</text>
+
+  <rect x="20" y="48" width="270" height="46" rx="5" fill="#fcebe7" stroke="#b4361f"/>
+  <text x="30" y="66" class="nm">id_ed25519</text>
+  <text x="30" y="83" class="d">your private key</text>
+  <rect x="222" y="54" width="60" height="17" rx="8" fill="#b4361f"/><text x="252" y="66" text-anchor="middle" class="tg">SECRET</text>
+
+  <rect x="20" y="108" width="270" height="46" rx="5" fill="#e6f4ec" stroke="#1d7a4b"/>
+  <text x="30" y="126" class="nm">id_ed25519.pub</text>
+  <text x="30" y="143" class="d">your public key</text>
+  <rect x="222" y="114" width="60" height="17" rx="8" fill="#1d7a4b"/><text x="252" y="126" text-anchor="middle" class="tg">PUBLIC</text>
+
+  <rect x="20" y="168" width="270" height="46" rx="5" fill="#f3f5f8" stroke="#c4cad3"/>
+  <text x="30" y="186" class="nm">config</text>
+  <text x="30" y="203" class="d">nicknames: ws = IP + user + key</text>
+
+  <rect x="20" y="228" width="270" height="46" rx="5" fill="#f3f5f8" stroke="#c4cad3"/>
+  <text x="30" y="246" class="nm">known_hosts</text>
+  <text x="30" y="263" class="d">fingerprints of servers you trust</text>
+
+  <!-- server -->
+  <rect x="460" y="8" width="290" height="314" rx="8" fill="#fff" stroke="#9aa3ae" stroke-width="1.3"/>
+  <text x="474" y="32" class="h">Your server</text>
+
+  <rect x="470" y="48" width="270" height="46" rx="5" fill="#f3f5f8" stroke="#c4cad3"/>
+  <text x="480" y="66" class="nm">sshd</text>
+  <text x="480" y="83" class="d">the SSH server program, on port 22</text>
+
+  <rect x="470" y="108" width="270" height="46" rx="5" fill="#e6f4ec" stroke="#1d7a4b"/>
+  <text x="480" y="126" class="nm">~/.ssh/authorized_keys</text>
+  <text x="480" y="143" class="d">public keys allowed to log in as ani</text>
+
+  <rect x="470" y="168" width="270" height="46" rx="5" fill="#fcebe7" stroke="#b4361f"/>
+  <text x="480" y="186" class="nm">ssh_host_ed25519_key</text>
+  <text x="480" y="203" class="d">the server's private host key (in /etc/ssh/)</text>
+  <rect x="672" y="174" width="60" height="17" rx="8" fill="#b4361f"/><text x="702" y="186" text-anchor="middle" class="tg">SECRET</text>
+
+  <rect x="470" y="228" width="270" height="46" rx="5" fill="#e6f4ec" stroke="#1d7a4b"/>
+  <text x="480" y="246" class="nm">ssh_host_ed25519_key.pub</text>
+  <text x="480" y="263" class="d">the server's public host key</text>
+
+  <!-- arrow A: your public key -> authorized_keys -->
+  <line x1="292" y1="131" x2="468" y2="131" class="arr"/>
+  <text x="380" y="82" text-anchor="middle" class="al">A. The server learns you</text>
+  <text x="380" y="98" text-anchor="middle" class="d">you copy your public key</text>
+  <text x="380" y="112" text-anchor="middle" class="d">here (setup step 5)</text>
+  <text x="380" y="153" text-anchor="middle" class="d">so it can check your</text>
+  <text x="380" y="167" text-anchor="middle" class="d">signatures</text>
+
+  <!-- arrow B: host public key -> known_hosts -->
+  <line x1="468" y1="251" x2="292" y2="251" class="arr"/>
+  <text x="380" y="206" text-anchor="middle" class="al">B. You learn the server</text>
+  <text x="380" y="222" text-anchor="middle" class="d">saved when you first</text>
+  <text x="380" y="236" text-anchor="middle" class="d">type "yes"; checked on</text>
+  <text x="380" y="276" text-anchor="middle" class="d">every later connection</text>
+</svg>
+<figcaption>Arrow A makes the server trust you. Arrow B makes you trust the server. Private keys (red) never move.</figcaption>
+</figure>
+<p>On Windows the same files live in <code>C:\Users\&lt;you&gt;\.ssh\</code>. The OpenSSH client that ships with Windows 10 and 11 works the same way as on macOS and Linux.</p>
+
+<h2><span class="num">5</span>How this maps to your setup</h2>
+<table class="keep">
+  <thead><tr><th>Setup step</th><th>What it does in SSH terms</th></tr></thead>
+  <tbody>
+  <tr><td>Step 2: <code>ssh-keygen</code></td><td>Makes your key pair. The part after <code>-C</code> is only a label; it ends up at the end of the public key line.</td></tr>
+  <tr><td>Step 5: paste the public key into the server form</td><td>Google Cloud's agent on the server creates the user <code>ani</code> and adds your public key to <code>~/.ssh/authorized_keys</code>. This is arrow A. The user name is the server's own account; it has nothing to do with your Google account.</td></tr>
+  <tr><td>Step 5: the static IP</td><td>Keeps the server's address the same, so the <code>HostName</code> in your config stays valid after you stop and start the server.</td></tr>
+  <tr><td>Step 6: the <code>config</code> file</td><td>Gives the nickname <code>ws</code>.</td></tr>
+  <tr><td>The first <code>ssh ws</code>: type <code>yes</code></td><td>Saves the server's host key in <code>known_hosts</code>. This is arrow B.</td></tr>
+  <tr><td>The default firewall rule</td><td>Port 22 is the one port open to the internet. If you later want a web page (for example Open WebUI), either open that port in the firewall or reach it through an SSH tunnel (see section 8).</td></tr>
+  </tbody>
+</table>
+
+<h2><span class="num">6</span>Keeping your keys safe</h2>
+<ul>
+  <li><b>The private key (the file without <code>.pub</code>) never leaves your laptop.</b> Do not email it, paste it into a chat, give it to an AI assistant, or commit it to git. If it ever leaves, treat it as stolen: remove its public key from the server and make a new pair.</li>
+  <li><b>The public key line is safe to paste anywhere.</b> That is its job.</li>
+  <li><b>A passphrase</b> is an optional password that locks the private key file on your disk, so a stolen file is useless without it. The setup guide leaves it empty to keep things simple. For servers that matter, use one, together with <code>ssh-agent</code>, which remembers it for you while you work.</li>
+  <li><b>Lock your laptop and encrypt its disk.</b> With an empty passphrase, whoever can read your files can log in as you.</li>
+  <li><b>Lost or sold a laptop?</b> Remove its public key from <code>authorized_keys</code> on the server. A new laptop means a new key pair.</li>
+  <li>OpenSSH refuses a private key that other users can read. If you see <i>UNPROTECTED PRIVATE KEY FILE</i>, run <code>chmod 600 ~/.ssh/id_ed25519</code>.</li>
+</ul>
+
+<h2><span class="num">7</span>When it goes wrong</h2>
+<table>
+  <thead><tr><th>You see</th><th>What it means and what to do</th></tr></thead>
+  <tbody>
+  <tr><td><code>Could not resolve hostname wc</code></td><td>SSH took the word you typed as a real hostname because there is no <code>Host</code> entry with that name. Check the spelling (<code>ws</code>, not <code>wc</code>) and that the <code>config</code> file exists and is saved without a <code>.txt</code> ending.</td></tr>
+  <tr><td><code>Connection timed out</code></td><td>Nothing answered. The server is stopped, the IP in <code>config</code> is wrong, or a firewall blocks port 22. Start the server and compare the IP.</td></tr>
+  <tr><td><code>Connection refused</code></td><td>The machine answered but nothing listens on port 22: usually the server is still booting. Wait a minute.</td></tr>
+  <tr><td><code>Permission denied (publickey)</code></td><td>The server did not accept your key: the wrong user name, the wrong key pasted in step 5, or SSH offered a different key. Run <code>ssh -v ws</code> and look at which key it offers.</td></tr>
+  <tr><td><code>Too many authentication failures</code></td><td>SSH offered many keys one by one and the server gave up before reaching the right one. In your <code>Host</code> block add <code>IdentityFile ~/.ssh/id_ed25519</code> and <code>IdentitiesOnly yes</code>.</td></tr>
+  <tr><td><code>REMOTE HOST IDENTIFICATION HAS CHANGED</code></td><td>The server at this address shows a different host key than the one you saved. After you delete and recreate a server, that is expected. If you did not, be suspicious. When sure, forget the old key with <code>ssh-keygen -R 34.123.45.67</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2><span class="num">8</span>What else SSH can do</h2>
+<ul>
+  <li><b>Run one command</b> without opening a shell: <code>ssh ws 'df -h'</code></li>
+  <li><b>Copy files:</b> <code>scp notes.txt ws:~/</code> (to the server) and <code>scp ws:~/results.csv .</code> (back to you). <code>rsync</code> and <code>sftp</code> use the same connection.</li>
+  <li><b>Tunnel a port.</b> <code>ssh -L 3000:localhost:3000 ws</code> makes <code>http://localhost:3000</code> in your laptop's browser reach port 3000 <i>on the server</i>, through the encrypted connection. Nothing has to be opened in the firewall.</li>
+  <li><b>Other tools reuse your setup.</b> VS Code's Remote&ndash;SSH, and <code>git</code> over SSH, read the same <code>config</code> and keys. GitHub also accepts public keys: the same idea, for <code>git push</code>.</li>
+</ul>
+
+<h2><span class="num">9</span>Try it yourself <span style="font-weight:normal;color:#5b6470;font-size:10pt">(5 minutes)</span></h2>
+<ol>
+  <li>On your laptop, look at your nicknames: <code>cat ~/.ssh/config</code> (Windows: <code>type $env:USERPROFILE\.ssh\config</code>). Find the <code>Host ws</code> block.</li>
+  <li>Show your public key's fingerprint: <code>ssh-keygen -lf ~/.ssh/id_ed25519.pub</code></li>
+  <li>Watch the login happen: <code>ssh -v ws</code>. Find the lines <i>Server host key</i>, <i>Offering public key</i> and <i>Authenticated to &hellip; using "publickey"</i>. Which numbered step in section 3 is each one?</li>
+  <li>On the server, find your public key in the list: <code>cat ~/.ssh/authorized_keys</code></li>
+  <li><b>Think:</b> why is it safe to paste your <i>public</i> key into a web form, but never your <i>private</i> key?</li>
+</ol>
+
+<h2><span class="num">10</span>Words to know</h2>
+<dl>
+  <dt>SSH</dt><dd>Secure Shell: an encrypted way to use a remote computer's terminal.</dd>
+  <dt>Key pair</dt><dd>A private key and a public key, made together.</dd>
+  <dt>Private key</dt><dd>The secret half. Lets you create signatures. Never shared.</dd>
+  <dt>Public key</dt><dd>The shareable half. Lets others check your signatures.</dd>
+  <dt>Signature</dt><dd>Proof, made with a private key, that can be checked with the public key.</dd>
+  <dt>Host key</dt><dd>The server's own key pair: how a server proves its identity.</dd>
+  <dt>Fingerprint</dt><dd>A short hash of a key, so people can compare keys at a glance.</dd>
+  <dt>Session key</dt><dd>The temporary secret both sides compute; it encrypts one connection.</dd>
+  <dt><span class="mono">authorized_keys</span></dt><dd>On the server: public keys allowed to log in as that user.</dd>
+  <dt><span class="mono">known_hosts</span></dt><dd>On your laptop: host keys of servers you have trusted.</dd>
+  <dt>Passphrase</dt><dd>An optional password that locks the private key file.</dd>
+  <dt>Port</dt><dd>A numbered door on a computer. SSH uses 22.</dd>
+</dl>
+
+</body>
+</html>

@@ -105,17 +105,17 @@ check3() {
   login=$(gh api user --jq .login 2>/dev/null)
   ok "logged in to GitHub as $login"
 
-  if [ ! -d "$HOME/team/.git" ]; then bad "team repository not in ~/team" "gh repo clone YOUR-TEAM-REPO ~/team"; return; fi
-  repo=$(cd "$HOME/team" && gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)
-  ok "team repository: $repo"
+  if [ ! -d "$HOME/aca-work/.git" ]; then bad "your repository is not in ~/aca-work" "cd ~ && gh repo create aca-work --private --add-readme --clone"; return; fi
+  repo=$(cd "$HOME/aca-work" && gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)
+  ok "your repository: $repo"
 
-  git -C "$HOME/team" fetch -q origin 2>/dev/null
-  if git -C "$HOME/team" cat-file -e "origin/main:members/$login.md" 2>/dev/null; then ok "members/$login.md is on main"
-  else bad "members/$login.md is not on main yet" "push your branch, open a pull request, and ask your captain to merge it"; fi
+  git -C "$HOME/aca-work" fetch -q origin 2>/dev/null
+  if git -C "$HOME/aca-work" cat-file -e "origin/main:about.md" 2>/dev/null; then ok "about.md is on main"
+  else bad "about.md is not on main yet" "push your branch, open a pull request with gh pr create --fill, then merge it with gh pr merge --merge --delete-branch"; fi
 
   if [ "$(gh pr list -R "$repo" --state merged --author "$login" --json number --jq length 2>/dev/null)" -ge 1 ] 2>/dev/null; then
     ok "you have a merged pull request"
-  else bad "no merged pull request from you yet" "gh pr create --fill, then ask your captain to merge it"; fi
+  else bad "no merged pull request from you yet" "gh pr create --fill, then gh pr merge --merge --delete-branch"; fi
 }
 
 check4() {

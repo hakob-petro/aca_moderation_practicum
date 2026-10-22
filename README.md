@@ -53,12 +53,12 @@ Each session's mission cards and checks are in its folder: start with
 
 | Session | You will |
 |---|---|
-| 1. **Workspace** | find your way around Linux, work in git with your team, connect a coding agent to free model providers |
+| 1. **Workspace** | find your way around Linux, work in git and GitHub, connect a coding agent to free model providers |
 | 2. **Docker** | run, fix and compose containers, and learn what exposing a port really does |
 | 3. **Train I: data and baseline** | run code on a cloud GPU, look at the data critically, see how a language model produces a probability, measure a baseline |
-| 4. **Train II: fine-tune and submit** | fine-tune the model, compare runs with your team, submit to Kaggle, and find out how your score holds up on rules your model has never seen |
+| 4. **Train II: fine-tune and submit** | fine-tune the model, compare your runs, submit to Kaggle, and find out how your score holds up on rules your model has never seen |
 | 5. **Deploy** | serve your model, put your own service in front of it, make it survive failures, and stand up a second server in minutes |
-| 6. **Product** | build the moderator console, log every decision, show similar past cases, and attack another team's console |
+| 6. **Product** | build the moderator console, log every decision, show similar past cases, and attack a classmate's console |
 
 ---
 
@@ -81,10 +81,6 @@ come.
 
 **Out of time?** Run `./catchup N` to start the next mission with everyone
 else. Finish the missed one at home: its `./check` still works.
-
-**Teams.** You work on your own server, but in a team of four with a captain.
-Your team shares a GitHub repository, a row on the board, and an opponent in
-the final session's game.
 
 ---
 
@@ -138,4 +134,4 @@ uses a small part of each, as long as you follow three rules:
 ## At the end of the course
 
 Delete your server and its static IP (the setup guide says how), and stop your
-Modal apps. Everything you built stays in your team's GitHub repository.
+Modal apps. Everything you built stays in your own GitHub repository.

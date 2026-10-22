@@ -17,7 +17,7 @@ ws-check
 
 If any line says **FAIL**, or you could not finish the setup guide, finish it
 now: `~/course/setup/STUDENT_SETUP.md`, or the copy on GitHub. Your instructor
-and the captains will come to you first. When `ws-check` is all PASS, continue
+will help you first. When `ws-check` is all PASS, continue
 below.
 
 ---
@@ -58,7 +58,7 @@ cd ~/course/seminar_1
 
 ## Two "why" questions
 
-Your captain will ask you these:
+Be ready to answer these if your instructor asks:
 
 1. Your laptop and your server both have a terminal. How do you tell which one
    you are typing into?
