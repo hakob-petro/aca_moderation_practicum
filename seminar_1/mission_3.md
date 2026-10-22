@@ -1,42 +1,12 @@
-# Mission 3 — tmux and git
+# Mission 3 — git with your team
 
 **Mode:** by hand · **Time:** 25 minutes
 
-Two skills you will use in every session from now on: keeping a program running
-when your laptop disconnects, and sharing work with your team.
+From now on your team shares its work through one GitHub repository. Today
+you each add one file to it, the way professional teams do: on a branch,
+through a pull request that someone else reviews and merges.
 
 ---
-
-## Part 1: tmux
-
-A program you start over SSH dies when the connection drops, for example when
-your laptop goes to sleep. **tmux** keeps it running on the server.
-
-1. Start a tmux session called `long`:
-
-   ```
-   tmux new -s long
-   ```
-
-2. Inside it, start a job that counts for 15 minutes:
-
-   ```
-   ~/course/seminar_1/long_job.sh
-   ```
-
-3. **Detach**, leaving it running: press **Ctrl+B**, let go, then press **D**.
-4. **Close your laptop lid** for one minute. Open it again.
-5. Your SSH connection is probably dead. Connect again with `ssh ws`, then:
-
-   ```
-   tmux attach -t long
-   ```
-
-   It is still counting. Detach again (Ctrl+B, then D) and leave it running.
-
----
-
-## Part 2: git with your team
 
 Your captain tells you your team's repository, for example
 `hakob-petro/aca-team-3`.
@@ -107,12 +77,11 @@ cd ~/course/seminar_1
 
 ## Two "why" questions
 
-1. What happened to the counting job when your laptop lid was closed, and what
-   would have happened without tmux?
+1. What is the difference between `git commit` and `git push`?
 2. Why do you work on a branch and open a pull request, instead of pushing
    straight to `main`?
 
 ---
 
-**Bonus:** open a second window inside tmux (Ctrl+B, then C) and switch
-between windows (Ctrl+B, then N).
+**Bonus:** after your teammates' files are merged, run `git switch main`,
+then `git pull`, then `git log --oneline --graph`. Whose commits do you see?

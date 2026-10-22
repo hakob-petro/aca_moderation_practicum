@@ -1,8 +1,8 @@
 # Seminar 1 — Workspace
 
 Today you get comfortable on your own server: finding your way around Linux,
-keeping work alive when your laptop sleeps, working in git with your team, and
-connecting a coding agent to free AI models.
+working in git with your team, and connecting a coding agent to free AI
+models.
 
 **Before you start:** your server is running (Google Cloud console → Compute
 Engine → VM instances → `ws` → **Start**), and you are logged in with `ssh ws`.
@@ -29,7 +29,7 @@ cd ~/course/seminar_1
 | 1 | [Finish and inspect your server](mission_1.md) | by hand | 30 |
 | – | Break | | 5 |
 | 2 | [Linux scavenger hunt](mission_2.md) | by hand | 25 |
-| 3 | [tmux and git](mission_3.md) | by hand | 25 |
+| 3 | [git with your team](mission_3.md) | by hand | 25 |
 | 4 | [Your first agent](mission_4.md) | with agent | 25 |
 
 Each card ends with the command that checks your work:

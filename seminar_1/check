@@ -96,15 +96,7 @@ check2() {
 }
 
 check3() {
-  local log="$HOME/s1/long_job.log" ticks login repo
-  if [ ! -f "$log" ]; then bad "the long job has not run" "tmux new -s long, then ~/course/seminar_1/long_job.sh"
-  elif ! head -n 1 "$log" | grep -q 'in tmux'; then bad "the long job was not started inside tmux" "tmux new -s long, then start it again inside"
-  else
-    ticks=$(grep -c '^tick' "$log")
-    if [ "$ticks" -ge 18 ]; then ok "the long job ran inside tmux for $((ticks / 6)) minutes"
-    else bad "the long job has run only $((ticks * 10)) seconds" "it needs 3 minutes; leave it running and check again"; fi
-  fi
-
+  local login repo
   if [ -z "$(git config --global user.name)" ] || [ -z "$(git config --global user.email)" ]; then
     bad "git does not know your name and email" "git config --global user.name \"Your Name\", and the same for user.email"
   else ok "git knows who you are"; fi

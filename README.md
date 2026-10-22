@@ -32,7 +32,7 @@ Each session's mission cards and checks are in its folder: start with
 
 | Session | You will |
 |---|---|
-| 1. **Workspace** | find your way around Linux, keep work alive with tmux, work in git with your team, connect a coding agent to free model providers |
+| 1. **Workspace** | find your way around Linux, work in git with your team, connect a coding agent to free model providers |
 | 2. **Docker** | run, fix and compose containers, and learn what exposing a port really does |
 | 3. **Train I: data and baseline** | run code on a cloud GPU, look at the data critically, see how a language model produces a probability, measure a baseline |
 | 4. **Train II: fine-tune and submit** | fine-tune the model, compare runs with your team, submit to Kaggle, and find out how your score holds up on rules your model has never seen |
