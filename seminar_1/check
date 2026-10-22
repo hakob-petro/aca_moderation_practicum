@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# Seminar 1 checks.   Usage:  ./check 1   (or 2, 3, 4)
+set -uo pipefail
+export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
+
+pass=0; fail=0
+ok()   { printf 'PASS  %s\n' "$1"; pass=$((pass + 1)); }
+bad()  { printf 'FAIL  %s\n' "$1"; fail=$((fail + 1)); [ -n "${2:-}" ] && printf '      -> %s\n' "$2"; }
+lower() { tr '[:upper:]' '[:lower:]'; }
+digest() { printf '%s' "$1" | lower | sha256sum | cut -d' ' -f1; }
+
+# Value after "key=" in an answers file, trimmed.
+get() {
+  [ -f "$1" ] || return 0
+  sed -n "s/^[[:space:]]*$2[[:space:]]*=[[:space:]]*//p" "$1" | head -n 1 | tr -d '\r' | sed 's/[[:space:]]*$//'
+}
+
+# Google Cloud's metadata server. Empty on a non-Google VM.
+meta() {
+  curl -fs -m 2 -H 'Metadata-Flavor: Google' \
+    "http://metadata.google.internal/computeMetadata/v1/instance/$1" 2>/dev/null
+}
+
+check1() {
+  local f="$HOME/s1/m1.txt" v want
+  if ws-check 2>/dev/null | tail -n 1 | grep -q '^ALL'; then ok "ws-check is all PASS"
+  else bad "ws-check is not all PASS" "run ws-check and fix what it says (the setup guide's last section helps)"; fi
+
+  if [ ! -f "$f" ]; then
+    bad "answers file ~/s1/m1.txt" "mkdir -p ~/s1 && cp ~/course/seminar_1/templates/m1.txt ~/s1/m1.txt && nano ~/s1/m1.txt"
+    return
+  fi
+
+  v=$(get "$f" zone | lower); want=$(meta zone | sed 's#.*/##')
+  if [ -z "$v" ]; then bad "zone" "fill in the zone line"
+  elif [ -z "$want" ] || [ "$v" = "$want" ]; then ok "zone: $v"
+  else bad "zone: $v" "not your server's zone; look at the Zone column in VM instances"; fi
+
+  v=$(get "$f" machine_type | lower); want=$(meta machine-type | sed 's#.*/##')
+  if [ -z "$v" ]; then bad "machine_type" "fill in the machine_type line"
+  elif [ -z "$want" ] || [ "$v" = "$want" ]; then ok "machine_type: $v"
+  else bad "machine_type: $v" "click ws in VM instances and look for Machine type"; fi
+
+  v=$(get "$f" vcpus | tr -dc '0-9'); want=$(nproc)
+  if [ "$v" = "$want" ]; then ok "vcpus: $v"
+  else bad "vcpus: ${v:-empty}" "run nproc on your server"; fi
+
+  v=$(get "$f" external_ip)
+  want=$(meta network-interfaces/0/access-configs/0/external-ip)
+  [ -z "$want" ] && want=$(curl -fsS -m 5 https://api.ipify.org 2>/dev/null)
+  if [ -n "$v" ] && [ "$v" = "$want" ]; then ok "external_ip: $v"
+  else bad "external_ip: ${v:-empty}" "the External IP column in VM instances"; fi
+
+  v=$(get "$f" credit_used)
+  if printf '%s' "$v" | grep -q '[0-9]'; then ok "credit_used: $v"
+  else bad "credit_used" "search Billing in the console, then Overview or Credits"; fi
+}
+
+check2() {
+  local f="$HOME/s1/m2.txt" a="$HOME/.hunt/answers" v want
+  if [ ! -f "$a" ]; then
+    bad "the hunt has not been started" "run ~/course/seminar_1/hunt/start.sh"
+    return
+  fi
+  if [ ! -f "$f" ]; then
+    bad "answers file ~/s1/m2.txt" "cp ~/course/seminar_1/templates/m2.txt ~/s1/m2.txt && nano ~/s1/m2.txt"
+    return
+  fi
+
+  v=$(get "$f" q1 | lower)
+  if printf '%s' "$v" | grep -q 'memory_hog'; then ok "q1: the biggest memory user"
+  else bad "q1: ${v:-empty}" "htop, then F6 and sort by MEM%; or ps aux --sort=-%mem | head"; fi
+
+  v=$(get "$f" q2 | tr -dc '0-9'); want=$(df --output=pcent / | tail -n 1 | tr -dc '0-9')
+  if [ -n "$v" ] && [ "$v" -ge $((want - 3)) ] && [ "$v" -le $((want + 3)) ]; then ok "q2: disk is about $want% full"
+  else bad "q2: ${v:-empty}" "df -h /, the Use% column"; fi
+
+  v=$(get "$f" q3)
+  if [ -n "$v" ] && [ "$(digest "$v")" = "$(get "$a" q3)" ]; then ok "q3: the code word in the log"
+  else bad "q3: ${v:-empty}" "tail shows the last lines of a file"; fi
+
+  v=$(get "$f" q4)
+  if [ -n "$v" ] && [ "$(digest "$v")" = "$(get "$a" q4)" ]; then ok "q4: the treasure"
+  else bad "q4: ${v:-empty}" "find ~/hunt -name treasure.txt, then cat it"; fi
+
+  v=$(get "$f" q5 | lower)
+  if [ "$v" = "root" ]; then ok "q5: the owner of locked.txt"
+  else bad "q5: ${v:-empty}" "ls -l ~/hunt shows each file's owner"; fi
+
+  v=$(get "$f" q6)
+  if [ -n "$v" ] && [ "$(digest "$v")" = "$(get "$a" q6)" ]; then ok "q6: the locked word"
+  else bad "q6: ${v:-empty}" "sudo cat ~/hunt/locked.txt"; fi
+
+  if pgrep -x memory_hog >/dev/null; then bad "memory_hog is still running" "find its PID with ps aux | grep memory_hog, then kill PID"
+  else ok "memory_hog is stopped"; fi
+}
+
+check3() {
+  local log="$HOME/s1/long_job.log" ticks login repo
+  if [ ! -f "$log" ]; then bad "the long job has not run" "tmux new -s long, then ~/course/seminar_1/long_job.sh"
+  elif ! head -n 1 "$log" | grep -q 'in tmux'; then bad "the long job was not started inside tmux" "tmux new -s long, then start it again inside"
+  else
+    ticks=$(grep -c '^tick' "$log")
+    if [ "$ticks" -ge 18 ]; then ok "the long job ran inside tmux for $((ticks / 6)) minutes"
+    else bad "the long job has run only $((ticks * 10)) seconds" "it needs 3 minutes; leave it running and check again"; fi
+  fi
+
+  if [ -z "$(git config --global user.name)" ] || [ -z "$(git config --global user.email)" ]; then
+    bad "git does not know your name and email" "git config --global user.name \"Your Name\", and the same for user.email"
+  else ok "git knows who you are"; fi
+
+  if ! gh auth status >/dev/null 2>&1; then bad "not logged in to GitHub" "gh auth login"; return; fi
+  login=$(gh api user --jq .login 2>/dev/null)
+  ok "logged in to GitHub as $login"
+
+  if [ ! -d "$HOME/team/.git" ]; then bad "team repository not in ~/team" "gh repo clone YOUR-TEAM-REPO ~/team"; return; fi
+  repo=$(cd "$HOME/team" && gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)
+  ok "team repository: $repo"
+
+  git -C "$HOME/team" fetch -q origin 2>/dev/null
+  if git -C "$HOME/team" cat-file -e "origin/main:members/$login.md" 2>/dev/null; then ok "members/$login.md is on main"
+  else bad "members/$login.md is not on main yet" "push your branch, open a pull request, and ask your captain to merge it"; fi
+
+  if [ "$(gh pr list -R "$repo" --state merged --author "$login" --json number --jq length 2>/dev/null)" -ge 1 ] 2>/dev/null; then
+    ok "you have a merged pull request"
+  else bad "no merged pull request from you yet" "gh pr create --fill, then ask your captain to merge it"; fi
+}
+
+check4() {
+  local auth="$HOME/.local/share/opencode/auth.json" n
+  if command -v opencode >/dev/null; then ok "OpenCode installed: $(opencode --version 2>/dev/null | head -n 1)"
+  else bad "OpenCode not found" "install it, then open a new shell: exec bash"; return; fi
+
+  if [ -f "$auth" ]; then n=$(jq 'keys | length' "$auth" 2>/dev/null || echo 0)
+  else n=0; fi
+  if [ "$n" -ge 2 ]; then ok "OpenCode has $n providers: $(jq -r 'keys | join(", ")' "$auth")"
+  elif [ "$n" -eq 1 ]; then bad "OpenCode has only one provider: $(jq -r 'keys | join(", ")' "$auth")" "run opencode auth login again for the second one"
+  else bad "OpenCode has no providers yet" "opencode auth login"; fi
+}
+
+case "${1:-}" in
+  1) check1 ;;
+  2) check2 ;;
+  3) check3 ;;
+  4) check4 ;;
+  *) echo "Usage: ./check N   (N = 1, 2, 3 or 4)"; exit 2 ;;
+esac
+
+echo
+if [ "$fail" -eq 0 ]; then echo "MISSION $1: ALL $pass PASSED. Colour your cell on the board."
+else echo "MISSION $1: $fail to fix. Follow the arrows above, then run ./check $1 again."; exit 1; fi

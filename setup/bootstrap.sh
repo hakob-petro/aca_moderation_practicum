@@ -50,6 +50,13 @@ if ! command -v gh >/dev/null; then
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gh >/dev/null
 fi
 
+say "The course repository, in ~/course"
+if [ -d "$HOME/course/.git" ]; then
+  git -C "$HOME/course" pull -q --ff-only || echo "Could not update ~/course; carrying on."
+else
+  git clone -q https://github.com/hakob-petro/aca_moderation_practicum.git "$HOME/course"
+fi
+
 say "The ws-check command"
 mkdir -p "$HOME/.local/bin"
 cat > "$HOME/.local/bin/ws-check" <<'CHECK'
@@ -86,6 +93,9 @@ done
 
 if command -v tmux >/dev/null; then ok tmux "$(tmux -V)"
 else bad tmux "not found: run the setup script again"; fi
+
+if [ -d "$HOME/course/.git" ]; then ok course "$HOME/course"
+else bad course "not found: run the setup script again"; fi
 
 if docker run --rm hello-world >/dev/null 2>&1; then ok docker "$(docker --version)"
 elif command -v docker >/dev/null; then bad docker "installed, but needs a fresh login: type exit, then ssh ws, then ws-check"

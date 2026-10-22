@@ -27,6 +27,9 @@ start.
 
 ## The six sessions
 
+Each session's mission cards and checks are in its folder: start with
+[seminar_1](seminar_1/README.md).
+
 | Session | You will |
 |---|---|
 | 1. **Workspace** | find your way around Linux, keep work alive with tmux, work in git with your team, connect a coding agent to free model providers |

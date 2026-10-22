@@ -1,0 +1,5 @@
+zone=
+machine_type=
+vcpus=
+external_ip=
+credit_used=
