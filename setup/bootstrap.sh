@@ -77,7 +77,7 @@ else bad memory "$mem GB (expected 4 GB: machine type e2-medium)"; fi
 
 free_gb=$(df -BG --output=avail / | tail -n 1 | tr -dc '0-9')
 if [ "$free_gb" -ge 15 ]; then ok disk "$free_gb GB free"
-else bad disk "$free_gb GB free (expected a 30 GB disk)"; fi
+else bad disk "$free_gb GB free (expected a 50 GB disk)"; fi
 
 if swapon --show | grep -q .; then ok swap "$(free -h | awk '/Swap/ {print $2}')"
 else bad swap "none: run the setup script again"; fi

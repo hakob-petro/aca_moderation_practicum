@@ -12,6 +12,9 @@ so there is time to ask for help.
 first lesson. We will finish it at the start. Write down the exact error text,
 not a description of it.
 
+**Prefer pasting commands to clicking?** Do steps 1 and 3, then use the optional
+shortcut at the end of this guide instead of steps 2, 4, 5 and 6.
+
 ---
 
 ## What you need
@@ -133,12 +136,12 @@ about.
 | | Zone | `us-central1-a` |
 | | Series | `E2` |
 | | Machine type | `e2-medium` (2 vCPU, 4 GB memory) |
-| OS and storage | Click **Change** | Operating system **Ubuntu**, version **Ubuntu 24.04 LTS**, the **x86/64** one (not Arm, not Minimal), boot disk type **Balanced persistent disk**, size **30 GB**. Click **Select** |
+| OS and storage | Click **Change** | Operating system **Ubuntu**, version **Ubuntu 24.04 LTS**, the **x86/64** one (not Arm, not Minimal), boot disk type **Balanced persistent disk**, size **50 GB**. Click **Select** |
 | Networking | Firewall | leave **Allow HTTP traffic** and **Allow HTTPS traffic** **unticked** |
 | | Network interfaces → External IPv4 address | **Reserve static external IP address**, name it `ws-ip`, click **Reserve** |
 | Security | Manage access → **Add manually generated SSH keys** | click **Add item** and paste the whole public-key line from step 2 |
 
-4. Check the cost estimate on the right: about **$25 a month** if left running
+4. Check the cost estimate on the right: about **$27 a month** if left running
    all the time. You will stop it between lessons, so it will cost much less.
 5. Click **Create**. After a minute, your server appears with a green tick.
 6. Write down its **External IP**, for example `34.123.45.67`.
@@ -230,7 +233,7 @@ last lines; you will send it in step 9.
 ## Step 8 (optional). Make it stop by itself every night
 
 You can skip this step. A server you forget to stop keeps using credit, about
-$0.80 a day, but even a server left running for the whole 90 days uses only
+$0.90 a day, but even a server left running for the whole 90 days uses only
 about a third of your $300. So this is a safety net, not a requirement. If you
 skip it, stop your server yourself after each lesson (see "Every day after
 this" below).
@@ -291,8 +294,8 @@ Send your instructor, in the course chat:
 When a server stops, your files stay. Programs that were running stop and need
 starting again.
 
-**What costs credit:** a running server (about $0.80 a day), its disk and static
-IP even when stopped (together about $0.30 a day). Nothing else in this course
+**What costs credit:** a running server (about $0.90 a day), its disk and static
+IP even when stopped (together about $0.40 a day). Nothing else in this course
 uses Google Cloud credit.
 
 ---
@@ -321,3 +324,43 @@ uses Google Cloud credit.
 - At the end of the course, delete the server and its static IP: Compute
   Engine → VM instances → `ws` → **Delete**; then search **IP addresses** and
   release `ws-ip`.
+
+---
+
+## Shortcut (optional): steps 2, 4, 5 and 6 by copy and paste
+
+If you would rather paste three commands than click through forms, do this
+section **instead of** steps 2, 4, 5 and 6, and then go on to step 7. Do not do
+both. You need steps 1 and 3 done first. It makes the same key, budget alert,
+server and `ssh ws` shortcut.
+
+**A. On your laptop.** Pick your username (lowercase letters, for example
+`ani`) and run the line for your system, with your username instead of `ani`.
+
+Windows (PowerShell):
+
+```
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/hakob-petro/aca_moderation_practicum/main/setup/ssh_setup.ps1))) key ani
+```
+
+macOS (Terminal):
+
+```
+curl -fsSL https://raw.githubusercontent.com/hakob-petro/aca_moderation_practicum/main/setup/ssh_setup.sh | bash -s -- key ani
+```
+
+It makes your key and prints one long line that starts with `curl`. Copy that
+whole line.
+
+**B. In Cloud Shell.** In the console, click **Activate Cloud Shell** (the `>_`
+button at the top right), paste the line and press Enter. If Google asks you to
+**Authorize** Cloud Shell, click **Authorize**. It takes two to three minutes.
+At the end it prints your **external IP** and two more lines. Write the IP down.
+
+**C. On your laptop again.** Run the line for your system that Cloud Shell
+printed (it already has your username and IP). It adds the `ws` shortcut and
+tests the connection. When it says **Connected**, you are done: from now on you
+connect with `ssh ws`.
+
+If a script stops with an error, copy the exact text and send it to the course
+chat. It is safe to run any of them again.
