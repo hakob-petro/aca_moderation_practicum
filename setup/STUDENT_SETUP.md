@@ -117,8 +117,8 @@ about.
    two minutes.
 2. Click **Create instance**.
 3. Fill in the settings below. Anything not in this table: leave as it is.
-   The name `ws` is short for **workspace**. Use exactly that name: steps 6
-   and 8 refer to it.
+   The name `ws` is short for **workspace**. Use exactly that name: later
+   steps refer to it.
 
 | Section | Setting | Value |
 |---|---|---|
@@ -195,7 +195,7 @@ on your server, not your laptop.
 Still on your server, paste this one line and press Enter:
 
 ```
-curl -fsSL <BOOTSTRAP_URL> | bash
+curl -fsSL https://raw.githubusercontent.com/hakob-petro/aca_moderation_practicum/main/setup/bootstrap.sh | bash
 ```
 
 It installs Docker, git, GitHub CLI, tmux, uv, OpenCode, and the Modal and
@@ -220,10 +220,16 @@ last lines; you will send it in step 9.
 
 ---
 
-## Step 8. Make it stop by itself every night
+## Step 8 (optional). Make it stop by itself every night
 
-A forgotten server keeps using credit. This stops yours at 23:00 Yerevan time
-every night. You can always start it again in the morning.
+You can skip this step. A server you forget to stop keeps using credit, about
+$0.80 a day, but even a server left running for the whole 90 days uses only
+about a third of your $300. So this is a safety net, not a requirement. If you
+skip it, stop your server yourself after each lesson (see "Every day after
+this" below).
+
+This step stops your server at 23:00 Yerevan time every night. You can always
+start it again in the morning.
 
 1. In the console, click the **Activate Cloud Shell** button at the top right
    (it looks like `>_`). A terminal opens at the bottom of the page. This is
@@ -272,7 +278,7 @@ Send your instructor, in the course chat:
 | To | Do |
 |---|---|
 | Start your server before a lesson | Compute Engine → VM instances → tick `ws` → **Start**, wait a minute, then `ssh ws` |
-| Stop it after a lesson | Compute Engine → VM instances → tick `ws` → **Stop**. It also stops by itself at 23:00 |
+| Stop it after a lesson | Compute Engine → VM instances → tick `ws` → **Stop**. If you did step 8, it also stops by itself at 23:00 |
 | See how much credit you have used | search **Billing** in the console → **Overview** |
 
 When a server stops, your files stay. Programs that were running stop and need
@@ -291,7 +297,7 @@ uses Google Cloud credit.
 | `Permission denied (publickey)` | the server does not recognise your key, or the username is wrong | check that `User` in your `config` is exactly the name at the end of your public key; check the key you pasted in step 5 is the `.pub` one |
 | `Connection timed out` | the server is stopped, or the IP is wrong | start it in the console; compare the External IP with `HostName` in your `config` |
 | `Could not resolve hostname ws` | the `config` file was not saved, or was saved as `config.txt` | open it again with the command from step 6; on Windows choose "All files" when saving |
-| The machine type or zone is not available | Google is short of that machine in that zone | pick zone `us-central1-b` or `us-central1-c` instead, and use that zone in step 8 |
+| The machine type or zone is not available | Google is short of that machine in that zone | pick zone `us-central1-b` or `us-central1-c` instead; if you do step 8, use that zone there too |
 | Your card is declined | the card does not allow online payments abroad | try another card. If none works, tell your instructor: you will get a server another way |
 | `ws-check` says docker needs a fresh login | you did not log out after step 7 | `exit`, then `ssh ws`, then `ws-check` again |
 | Anything else | – | copy the exact error and send it to the course chat |

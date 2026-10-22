@@ -98,8 +98,9 @@ uses a small part of each, as long as you follow three rules:
 
 1. **Never upgrade your Google Cloud account.** As long as you do not, your
    card cannot be charged.
-2. **Stop what you are not using.** Your server stops itself at 23:00 every
-   night; stop your Modal apps at the end of each session.
+2. **Stop what you are not using.** Stop your server after each session (or
+   set it to stop itself every night, the optional step 8 of the setup guide),
+   and stop your Modal apps.
 3. **Never set `min_containers` in a Modal app.** It keeps a GPU running
    around the clock, about $19 a day.
 

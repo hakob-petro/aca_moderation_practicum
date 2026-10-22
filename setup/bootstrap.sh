@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Course workspace setup for Ubuntu 24.04 (Google Cloud e2-medium).
 #
-#   curl -fsSL <BOOTSTRAP_URL> | bash
+#   curl -fsSL https://raw.githubusercontent.com/hakob-petro/aca_moderation_practicum/main/setup/bootstrap.sh | bash
 #
 # Run as your normal user, not root. Safe to run again after a failure.
 # Pin versions below once you have tested them; empty means "latest".
