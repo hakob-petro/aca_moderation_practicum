@@ -5,6 +5,11 @@
 #   curl -fsSL https://raw.githubusercontent.com/hakob-petro/aca_moderation_practicum/main/setup/class_server/provision.sh | sudo bash
 #
 # Then add each student with:   sudo class-add-student GITHUB_USERNAME
+#                          or:   sudo class-add-student --key "ssh-ed25519 AAAA..." USERNAME
+#
+# Do not add students' keys through the cloud console: on Google Cloud, accounts
+# made from console SSH keys get sudo, and then every student can read everyone's
+# files.
 #
 # Every student gets their own Linux account (no sudo), a private home folder,
 # memory and CPU limits, the course repository in ~/course, and their SSH keys
@@ -61,6 +66,7 @@ set -uo pipefail
 while read -r user gh; do
   [ -z "${user:-}" ] && continue
   [ -n "${1:-}" ] && [ "$user" != "$1" ] && continue
+  [ "$gh" = "-" ] && continue   # added with --key: keys are managed by hand
   home="/home/$user"
   [ -d "$home" ] || continue
   keys=$(curl -fsS -m 10 "https://github.com/$gh.keys" 2>/dev/null) || continue
@@ -75,19 +81,41 @@ EOF
 
 cat > /usr/local/sbin/class-add-student <<'EOF'
 #!/usr/bin/env bash
-# Adds a student.   sudo class-add-student GITHUB_USERNAME [SERVER_USERNAME]
-# The server username defaults to the GitHub username in lower case.
+# Adds a student, without sudo.
+#   sudo class-add-student GITHUB_USERNAME [SERVER_USERNAME]
+#       keys copied from github.com/GITHUB_USERNAME.keys, refreshed every minute
+#   sudo class-add-student --key "ssh-ed25519 AAAA... comment" SERVER_USERNAME
+#       the given public key; add more keys by running it again
 set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { echo "Run with sudo." >&2; exit 1; }
-gh="${1:?Usage: class-add-student GITHUB_USERNAME [SERVER_USERNAME]}"
-user="${2:-$(printf '%s' "$gh" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_-' '_')}"
+
+key=""
+if [ "${1:-}" = "--key" ]; then
+  key="${2:?Usage: class-add-student --key \"PUBLIC KEY\" SERVER_USERNAME}"
+  user="${3:?Usage: class-add-student --key \"PUBLIC KEY\" SERVER_USERNAME}"
+  gh="-"
+  case "$key" in ssh-*|ecdsa-*|sk-*) ;; *) echo "That does not look like a public key: $key" >&2; exit 1 ;; esac
+else
+  gh="${1:?Usage: class-add-student GITHUB_USERNAME [SERVER_USERNAME], or --key \"PUBLIC KEY\" SERVER_USERNAME}"
+  user="${2:-$(printf '%s' "$gh" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_-' '_')}"
+fi
+user=$(printf '%s' "$user" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_-' '_')
 case "$user" in [a-z_]*) ;; *) user="u$user" ;; esac
 user="${user:0:32}"
 
 id "$user" >/dev/null 2>&1 || useradd -m -s /bin/bash "$user"
 chmod 750 "/home/$user"
 grep -q "^$user " /etc/class/students || echo "$user $gh" >> /etc/class/students
-/usr/local/sbin/class-sync-keys "$user"
+
+if [ -n "$key" ]; then
+  install -d -m 700 -o "$user" -g "$user" "/home/$user/.ssh"
+  touch "/home/$user/.ssh/authorized_keys"
+  grep -qxF "$key" "/home/$user/.ssh/authorized_keys" || printf '%s\n' "$key" >> "/home/$user/.ssh/authorized_keys"
+  chown "$user:$user" "/home/$user/.ssh/authorized_keys"
+  chmod 600 "/home/$user/.ssh/authorized_keys"
+else
+  /usr/local/sbin/class-sync-keys "$user"
+fi
 
 if [ ! -d "/home/$user/course/.git" ]; then
   sudo -u "$user" git clone -q https://github.com/hakob-petro/aca_moderation_practicum.git "/home/$user/course"
@@ -97,20 +125,23 @@ fi
 if [ -x /usr/local/sbin/class-docker-user ]; then /usr/local/sbin/class-docker-user "$user" >/dev/null || echo "$user: Docker setup FAILED, see /home/$user/.docker-setup.log"; fi
 
 keys=$(grep -c . "/home/$user/.ssh/authorized_keys" 2>/dev/null || echo 0)
-if [ "$keys" -gt 0 ]; then note="$keys SSH key(s) from GitHub"
+if [ "$gh" = "-" ]; then note="$keys SSH key(s), added by hand"
+elif [ "$keys" -gt 0 ]; then note="$keys SSH key(s) from GitHub"
 else note="no SSH key on GitHub yet; it is picked up within a minute of being added"; fi
-printf '%-20s GitHub: %-20s %s\n' "$user" "$gh" "$note"
+uid=$(id -u "$user")
+printf '%-20s ports %s-%s   %s\n' "$user" $((10000 + (uid - 1000) * 10)) $((10009 + (uid - 1000) * 10)) "$note"
 EOF
 
 cat > /usr/local/sbin/class-list <<'EOF'
 #!/usr/bin/env bash
 # Lists students: server username, GitHub username, keys, logged in now.
-printf '%-20s %-20s %-6s %s\n' USER GITHUB KEYS "LOGGED IN"
+printf '%-20s %-20s %-12s %-6s %s\n' USER GITHUB PORTS KEYS "LOGGED IN"
 while read -r user gh; do
   [ -z "${user:-}" ] && continue
+  uid=$(id -u "$user" 2>/dev/null) || continue
   keys=$(grep -c . "/home/$user/.ssh/authorized_keys" 2>/dev/null || echo 0)
   on=$(who | awk -v u="$user" '$1 == u {print "yes"; exit}')
-  printf '%-20s %-20s %-6s %s\n' "$user" "$gh" "$keys" "${on:-no}"
+  printf '%-20s %-20s %-12s %-6s %s\n' "$user" "$gh" "$((10000 + (uid - 1000) * 10))-$((10009 + (uid - 1000) * 10))" "$keys" "${on:-no}"
 done < /etc/class/students
 EOF
 
@@ -120,5 +151,6 @@ systemctl enable --now cron >/dev/null 2>&1 || true
 
 say "Done"
 echo "Add students:   sudo class-add-student GITHUB_USERNAME"
+echo "            or: sudo class-add-student --key \"ssh-ed25519 AAAA...\" USERNAME"
 echo "See them:       sudo class-list"
 echo "Students log in with:  ssh SERVER_USERNAME@$(curl -fsS -m 5 https://api.ipify.org 2>/dev/null || echo THIS-SERVER-IP)"
