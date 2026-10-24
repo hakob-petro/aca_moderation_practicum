@@ -8,8 +8,8 @@ reads them first:
 comment in → probability it breaks the rule → approve, send to a human, or remove
 ```
 
-You will rent your own server, fine-tune a language model on a real Kaggle
-competition, deploy it, and build the moderator's console around it. Along the
+You will work on a Linux server in the cloud, fine-tune a language model on a
+real Kaggle competition, deploy it, and build the moderator's console around it. Along the
 way you will learn the tools every ML engineer uses daily: SSH, Linux, git,
 Docker, cloud GPUs and a coding agent.
 
@@ -38,11 +38,13 @@ would have placed.
 
 ## Before the first session
 
-Follow **[setup/STUDENT_SETUP.md](setup/STUDENT_SETUP.md)**. It takes about
-45–60 minutes: you create a GitHub account, rent a free cloud server, connect
-to it and install the basic tools. Do it at least two days before Session 1. If you
-get stuck, do what you can and bring your laptop; we finish it together at the
-start.
+Follow **[setup/STUDENT_SETUP.md](setup/STUDENT_SETUP.md)**: a GitHub account,
+an SSH key, and that key added to GitHub. About 15 minutes. Then send your
+GitHub username to the course chat.
+
+**Where you work:** in Sessions 1 and 2 the whole class shares one server, each
+with your own account on it. From Session 3, each of you gets a server of your
+own.
 
 ---
 
@@ -108,7 +110,6 @@ All free.
 | Account | When |
 |---|---|
 | GitHub, Google | before Session 1 |
-| Google Cloud free trial | before Session 1, from the setup guide |
 | OpenCode Zen, Google AI Studio key | Session 1 |
 | Modal | Session 3 |
 | Kaggle | at home, before Session 4 |
@@ -118,20 +119,16 @@ All free.
 
 ## Credit rules
 
-You have free credit on Google Cloud ($300) and Modal ($30 a month). The course
-uses a small part of each, as long as you follow three rules:
+You have free credit on Modal ($30 a month). The course uses a small part of
+it, as long as you follow two rules:
 
-1. **Never upgrade your Google Cloud account.** As long as you do not, your
-   card cannot be charged.
-2. **Stop what you are not using.** Stop your server after each session (or
-   set it to stop itself every night, the optional step 8 of the setup guide),
-   and stop your Modal apps.
-3. **Never set `min_containers` in a Modal app.** It keeps a GPU running
+1. **Stop your Modal apps** at the end of each session.
+2. **Never set `min_containers` in a Modal app.** It keeps a GPU running
    around the clock, about $19 a day.
 
 ---
 
 ## At the end of the course
 
-Delete your server and its static IP (the setup guide says how), and stop your
-Modal apps. Everything you built stays in your own GitHub repository.
+Stop your Modal apps. Everything you built stays in your own GitHub
+repository.

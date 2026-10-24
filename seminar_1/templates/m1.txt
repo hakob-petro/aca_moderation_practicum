@@ -1,5 +1,5 @@
-zone=
-machine_type=
-vcpus=
-external_ip=
-credit_used=
+cpus=
+memory_gb=
+classmate=
+home=
+public_ip=

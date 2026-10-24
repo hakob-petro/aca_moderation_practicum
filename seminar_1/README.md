@@ -1,23 +1,13 @@
 # Seminar 1 — Workspace
 
-Today you get comfortable on your own server: finding your way around Linux,
-working in git and GitHub, and connecting a coding agent to free AI models.
+Today you get comfortable on a Linux server: finding your way around, working
+in git and GitHub, and connecting a coding agent to free AI models.
 
-**Before you start:** your server is running (Google Cloud console → Compute
-Engine → VM instances → `ws` → **Start**), and you are logged in with `ssh ws`.
-Then get today's files:
+In Sessions 1 and 2 the whole class shares one server; each of you has your own
+account on it. From Session 3, each of you gets a server of your own.
 
-```
-cd ~/course && git pull
-cd ~/course/seminar_1
-```
-
-If `~/course` does not exist yet:
-
-```
-git clone https://github.com/hakob-petro/aca_moderation_practicum.git ~/course
-cd ~/course/seminar_1
-```
+**Start with [mission 1](mission_1.md):** it gets you onto the class server.
+Once you are logged in, today's files are in `~/course/seminar_1`.
 
 ---
 
@@ -25,7 +15,7 @@ cd ~/course/seminar_1
 
 | # | Mission | Mode | Minutes |
 |---|---|---|---|
-| 1 | [Finish and inspect your server](mission_1.md) | by hand | 30 |
+| 1 | [Get onto the class server](mission_1.md) | by hand | 30 |
 | – | Break | | 5 |
 | 2 | [Linux scavenger hunt](mission_2.md) | by hand | 25 |
 | 3 | [git and GitHub](mission_3.md) | by hand | 25 |
@@ -55,9 +45,6 @@ not depend on each other, so you can always start the next one.
 - `./check 1`, `./check 2`, `./check 3` and `./check 4` all pass
 - your `about.md` is merged into your own repository, `aca-work`
 - OpenCode answers you through two different providers
-
-**After the session,** stop your server: Compute Engine → VM instances → `ws`
-→ **Stop**. Your files stay; programs that were running stop.
 
 Anything you did not finish, finish at home before the next session: each
 mission's `./check` still works.

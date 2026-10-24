@@ -13,12 +13,10 @@ words=(apricot basalt cobalt dune ember fjord granite harbor indigo jasper
 pick() { echo "${words[RANDOM % ${#words[@]}]}"; }
 digest() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sha256sum | cut -d' ' -f1; }
 
-echo "Setting up the hunt. Your password may be asked for one step."
-
-# Start over: stop an old memory-hungry program, remove old files.
-pkill -x memory_hog 2>/dev/null || true
-sudo rm -rf "$H"
-rm -rf "$S"
+# Start over: stop your old memory-hungry program, remove old files.
+pkill -u "$USER" -x memory_hog 2>/dev/null || true
+chmod -R u+rwx "$H" 2>/dev/null || true
+rm -rf "$H" "$S"
 mkdir -p "$H" "$S"
 
 w_log=$(pick)
@@ -39,16 +37,15 @@ echo "$w_treasure" > "$H/.cache/x/.old/notes/treasure.txt"
 echo "Not here. Keep looking." > "$H/docs/readme.txt"
 echo "id,comment" > "$H/data/comments.csv"
 
-# q5, q6: a file only its owner, root, can read.
-echo "$w_locked" | sudo tee "$H/locked.txt" >/dev/null
-sudo chown root:root "$H/locked.txt"
-sudo chmod 600 "$H/locked.txt"
+# q5, q6: a file you own but cannot read until you change its permissions.
+echo "$w_locked" > "$H/locked.txt"
+chmod 000 "$H/locked.txt"
 
-# q1: a program that holds about 400 MB of memory, called memory_hog.
+# q1: a program that holds about 300 MB of memory, called memory_hog.
 ln -sf "$(command -v python3)" "$S/memory_hog"
 nohup "$S/memory_hog" -c '
 import time
-x = bytearray(b"\x01") * (400 * 1024 * 1024)
+x = bytearray(b"\x01") * (300 * 1024 * 1024)
 time.sleep(4 * 3600)
 ' >/dev/null 2>&1 &
 
@@ -62,4 +59,4 @@ time.sleep(4 * 3600)
 sleep 2
 echo
 echo "The hunt is ready, in ~/hunt."
-echo "Now:  cp ~/course/seminar_1/templates/m2.txt ~/s1/m2.txt && nano ~/s1/m2.txt"
+echo "Now:  mkdir -p ~/s1 && cp ~/course/seminar_1/templates/m2.txt ~/s1/m2.txt && nano ~/s1/m2.txt"

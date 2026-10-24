@@ -22,38 +22,43 @@ meta() {
 }
 
 check1() {
-  local f="$HOME/s1/m1.txt" v want
-  if ws-check 2>/dev/null | tail -n 1 | grep -q '^ALL'; then ok "ws-check is all PASS"
-  else bad "ws-check is not all PASS" "run ws-check and fix what it says (the setup guide's last section helps)"; fi
+  local f="$HOME/s1/m1.txt" v want mem
+  if [ -n "${SSH_CONNECTION:-}" ]; then ok "you are logged in over SSH as $USER"
+  else bad "you are not in an SSH session" "connect from your laptop with: ssh ws"; fi
+
+  if [ -s "$HOME/.ssh/authorized_keys" ]; then ok "your SSH key from GitHub is on the server"
+  else bad "no SSH key on the server for you" "add your public key to GitHub (Settings, SSH keys), wait a minute"; fi
 
   if [ ! -f "$f" ]; then
     bad "answers file ~/s1/m1.txt" "mkdir -p ~/s1 && cp ~/course/seminar_1/templates/m1.txt ~/s1/m1.txt && nano ~/s1/m1.txt"
     return
   fi
 
-  v=$(get "$f" zone | lower); want=$(meta zone | sed 's#.*/##')
-  if [ -z "$v" ]; then bad "zone" "fill in the zone line"
-  elif [ -z "$want" ] || [ "$v" = "$want" ]; then ok "zone: $v"
-  else bad "zone: $v" "not your server's zone; look at the Zone column in VM instances"; fi
+  v=$(get "$f" cpus | tr -dc '0-9'); want=$(nproc --all)
+  if [ "$v" = "$want" ]; then ok "cpus: $v"
+  else bad "cpus: ${v:-empty}" "nproc --all"; fi
 
-  v=$(get "$f" machine_type | lower); want=$(meta machine-type | sed 's#.*/##')
-  if [ -z "$v" ]; then bad "machine_type" "fill in the machine_type line"
-  elif [ -z "$want" ] || [ "$v" = "$want" ]; then ok "machine_type: $v"
-  else bad "machine_type: $v" "click ws in VM instances and look for Machine type"; fi
+  v=$(get "$f" memory_gb | tr -dc '0-9.'); mem=$(awk '/MemTotal/ {printf "%.1f", $2 / 1048576}' /proc/meminfo)
+  if [ -n "$v" ] && awk -v a="$v" -v m="$mem" 'BEGIN { d = a - m; if (d < 0) d = -d; t = m / 10; if (t < 2) t = 2; exit !(d <= t) }'; then
+    ok "memory_gb: $v (the server has $mem GB)"
+  else bad "memory_gb: ${v:-empty}" "free -h, the total column of the Mem line"; fi
 
-  v=$(get "$f" vcpus | tr -dc '0-9'); want=$(nproc)
-  if [ "$v" = "$want" ]; then ok "vcpus: $v"
-  else bad "vcpus: ${v:-empty}" "run nproc on your server"; fi
+  v=$(get "$f" classmate | lower)
+  if [ -z "$v" ]; then bad "classmate" "who lists everyone logged in right now"
+  elif [ "$v" = "$USER" ]; then bad "classmate: $v" "that is you; pick someone else from who"
+  elif id "$v" >/dev/null 2>&1 && { who | awk '{print $1}' | grep -qx "$v" || last -w -n 2000 2>/dev/null | awk '{print $1}' | grep -qx "$v"; }; then
+    ok "classmate: $v"
+  else bad "classmate: $v" "no such user has logged in; check the spelling in who"; fi
 
-  v=$(get "$f" external_ip)
+  v=$(get "$f" home)
+  if [ "$v" = "$HOME" ]; then ok "home: $v"
+  else bad "home: ${v:-empty}" "cd, then pwd"; fi
+
+  v=$(get "$f" public_ip)
   want=$(meta network-interfaces/0/access-configs/0/external-ip)
   [ -z "$want" ] && want=$(curl -fsS -m 5 https://api.ipify.org 2>/dev/null)
-  if [ -n "$v" ] && [ "$v" = "$want" ]; then ok "external_ip: $v"
-  else bad "external_ip: ${v:-empty}" "the External IP column in VM instances"; fi
-
-  v=$(get "$f" credit_used)
-  if printf '%s' "$v" | grep -q '[0-9]'; then ok "credit_used: $v"
-  else bad "credit_used" "search Billing in the console, then Overview or Credits"; fi
+  if [ -n "$v" ] && [ "$v" = "$want" ]; then ok "public_ip: $v"
+  else bad "public_ip: ${v:-empty}" "it is the HostName in your ~/.ssh/config"; fi
 }
 
 check2() {
@@ -84,15 +89,15 @@ check2() {
   else bad "q4: ${v:-empty}" "find ~/hunt -name treasure.txt, then cat it"; fi
 
   v=$(get "$f" q5 | lower)
-  if [ "$v" = "root" ]; then ok "q5: the owner of locked.txt"
+  if [ "$v" = "$USER" ]; then ok "q5: the owner of locked.txt"
   else bad "q5: ${v:-empty}" "ls -l ~/hunt shows each file's owner"; fi
 
   v=$(get "$f" q6)
   if [ -n "$v" ] && [ "$(digest "$v")" = "$(get "$a" q6)" ]; then ok "q6: the locked word"
-  else bad "q6: ${v:-empty}" "sudo cat ~/hunt/locked.txt"; fi
+  else bad "q6: ${v:-empty}" "you own it, so you may change its permissions: chmod u+r ~/hunt/locked.txt, then cat it"; fi
 
-  if pgrep -x memory_hog >/dev/null; then bad "memory_hog is still running" "find its PID with ps aux | grep memory_hog, then kill PID"
-  else ok "memory_hog is stopped"; fi
+  if pgrep -u "$USER" -x memory_hog >/dev/null; then bad "your memory_hog is still running" "find its PID with ps -u $USER | grep memory_hog, then kill PID"
+  else ok "your memory_hog is stopped"; fi
 }
 
 check3() {
