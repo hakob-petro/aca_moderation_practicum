@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+# Seminar 2 checks.   Usage:  ./check 1   (or 2, 3, 4)
+set -uo pipefail
+
+# Your own ports and your own Docker, as set at login on the class server.
+MYPORT="${MYPORT:-$(( 10000 + ($(id -u) - 1000) * 10 ))}"
+if [ -z "${DOCKER_HOST:-}" ] && [ -S "/run/user/$(id -u)/docker.sock" ]; then
+  export DOCKER_HOST="unix:///run/user/$(id -u)/docker.sock"
+fi
+
+pass=0; fail=0
+ok()   { printf 'PASS  %s\n' "$1"; pass=$((pass + 1)); }
+bad()  { printf 'FAIL  %s\n' "$1"; fail=$((fail + 1)); [ -n "${2:-}" ] && printf '      -> %s\n' "$2"; }
+lower() { tr '[:upper:]' '[:lower:]'; }
+
+get() {
+  [ -f "$1" ] || return 0
+  sed -n "s/^[[:space:]]*$2[[:space:]]*=[[:space:]]*//p" "$1" | head -n 1 | tr -d '\r' | sed 's/[[:space:]]*$//'
+}
+
+running() { [ "$(docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null)" = "true" ]; }
+
+need_docker() {
+  if docker info >/dev/null 2>&1; then return 0; fi
+  bad "your Docker is not answering" "systemctl --user start docker, wait a few seconds, then run the check again"
+  return 1
+}
+
+check1() {
+  local f="$HOME/s2/m1.txt" v want
+  need_docker || return
+
+  if [ -n "$(docker ps -aq --filter ancestor=hello-world)" ]; then ok "hello-world ran"
+  else bad "hello-world has not run yet" "docker run hello-world"; fi
+
+  if ! docker inspect web >/dev/null 2>&1; then ok "the web container is stopped and removed"
+  elif running web; then bad "web is still running" "docker stop web, then docker rm web"
+  else bad "web is stopped but not removed" "docker rm web"; fi
+
+  if [ ! -f "$f" ]; then
+    bad "answers file ~/s2/m1.txt" "mkdir -p ~/s2 && cp ~/course/seminar_2/templates/m1.txt ~/s2/m1.txt && nano ~/s2/m1.txt"
+    return
+  fi
+
+  v=$(get "$f" container_os | lower)
+  if [ "$v" = "alpine" ]; then ok "container_os: $v"
+  else bad "container_os: ${v:-empty}" "inside the container, cat /etc/os-release: the ID line"; fi
+
+  v=$(get "$f" nginx_version | tr -dc '0-9.')
+  want=$(docker run --rm --entrypoint nginx nginx:1.27-alpine -v 2>&1 | sed -n 's#.*nginx/\([0-9][0-9.]*\).*#\1#p' | head -n 1)
+  if [ -n "$v" ] && [ "$v" = "$want" ]; then ok "nginx_version: $v"
+  else bad "nginx_version: ${v:-empty}" "inside the container: nginx -v"; fi
+}
+
+check2() {
+  local src port page
+  need_docker || return
+
+  if ! docker inspect site >/dev/null 2>&1; then
+    bad "no container called site" "follow step 3 of mission 2"
+    return
+  fi
+  if running site; then ok "site is running"
+  else bad "site is not running" "docker logs site shows why; then docker start site"; fi
+
+  port=$(docker port site 80 2>/dev/null | head -n 1)
+  if [ "$port" = "127.0.0.1:$MYPORT" ]; then ok "site is published on 127.0.0.1:$MYPORT, your port"
+  else bad "site is published on ${port:-nothing}" "it should be -p 127.0.0.1:$MYPORT:80"; fi
+
+  src=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/usr/share/nginx/html"}}{{.Source}}{{end}}{{end}}' site)
+  if [ "$src" = "$HOME/s2/site" ]; then ok "your folder ~/s2/site is mounted into the container"
+  else bad "~/s2/site is not mounted into the container" "-v ~/s2/site:/usr/share/nginx/html:ro"; fi
+
+  page=$(curl -fsS -m 5 "http://127.0.0.1:$MYPORT/" 2>/dev/null)
+  if printf '%s' "$page" | grep -q "$USER"; then ok "the page shows your username"
+  else bad "the page does not show your username, $USER" "edit ~/s2/site/index.html, then reload the page"; fi
+}
+
+check3() {
+  local port=$((MYPORT + 1)) page pub
+  need_docker || return
+
+  if docker image inspect broken-app >/dev/null 2>&1; then ok "the image broken-app is built"
+  else bad "no image called broken-app yet" "cd ~/s2/broken && docker build -t broken-app .   Then read the error"; return; fi
+
+  if ! docker inspect fixed >/dev/null 2>&1; then
+    bad "no container called fixed" "run it with the command from the card"
+    return
+  fi
+  if running fixed; then ok "fixed is running"
+  else bad "fixed started and then stopped" "docker logs fixed tells you why"; return; fi
+
+  pub=$(docker port fixed 2>/dev/null | head -n 1)
+  page=$(curl -fsS -m 5 "http://127.0.0.1:$port/" 2>/dev/null)
+  if printf '%s' "$page" | grep -q "Hello from"; then ok "it answers: $page"
+  else bad "nothing answers on 127.0.0.1:$port" "docker port fixed shows what you published ($pub); docker logs fixed shows which port the app listens on"; fi
+
+  if printf '%s' "$pub" | grep -q "127.0.0.1:$port"; then ok "published on 127.0.0.1:$port, your port"
+  else bad "published on ${pub:-nothing}" "use -p 127.0.0.1:$port:..."; fi
+}
+
+check4() {
+  local dir="$HOME/s2/counter" port=$((MYPORT + 2)) cid policy vol pub stats starts visits
+  need_docker || return
+
+  if [ ! -f "$dir/compose.yml" ]; then
+    bad "no ~/s2/counter/compose.yml" "mkdir -p ~/s2 && cp -r ~/course/seminar_2/counter ~/s2/counter"
+    return
+  fi
+  if grep -q 'TODO"\|: TODO\|- TODO' "$dir/compose.yml"; then
+    bad "compose.yml still has a TODO" "fill in all three"
+    return
+  fi
+  ok "compose.yml is filled in"
+
+  cid=$(cd "$dir" && docker compose ps -q counter 2>/dev/null | head -n 1)
+  if [ -z "$cid" ]; then bad "the counter is not running" "cd ~/s2/counter && docker compose up -d --build"; return; fi
+  ok "the counter is running"
+
+  policy=$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$cid")
+  case "$policy" in
+    always|unless-stopped|on-failure) ok "restart policy: $policy" ;;
+    *) bad "restart policy: ${policy:-none}" "restart: unless-stopped" ;;
+  esac
+
+  vol=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Type}} {{.Name}}{{end}}{{end}}' "$cid")
+  case "$vol" in
+    "volume "*counter-data) ok "/data is the named volume ${vol#volume }" ;;
+    *) bad "/data is not the named volume counter-data" "volumes:  - counter-data:/data" ;;
+  esac
+
+  pub=$(docker port "$cid" 8000 2>/dev/null | head -n 1)
+  if [ "$pub" = "127.0.0.1:$port" ]; then ok "published on 127.0.0.1:$port, your port"
+  else bad "published on ${pub:-nothing}" "\"127.0.0.1:\${PORT}:8000\", with PORT=$port in .env; if you made it public in step 5, put 127.0.0.1 back"; fi
+
+  stats=$(curl -fsS -m 5 "http://127.0.0.1:$port/stats" 2>/dev/null)
+  starts=$(printf '%s' "$stats" | sed -n 's/.*"starts": *\([0-9]*\).*/\1/p')
+  visits=$(printf '%s' "$stats" | sed -n 's/.*"visits": *\([0-9]*\).*/\1/p')
+  if [ "${starts:-0}" -ge 3 ]; then ok "the app has started $starts times and kept its count: it came back by itself"
+  else bad "the app has started only ${starts:-0} time(s)" "do steps 3 and 4: crash it, then down and up, then restart Docker"; fi
+  if [ "${visits:-0}" -ge 3 ]; then ok "$visits visits counted, kept in the volume"
+  else bad "only ${visits:-0} visit(s) counted" "curl 127.0.0.1:$port a few times"; fi
+}
+
+case "${1:-}" in
+  1) check1 ;;
+  2) check2 ;;
+  3) check3 ;;
+  4) check4 ;;
+  *) echo "Usage: ./check N   (N = 1, 2, 3 or 4)"; exit 2 ;;
+esac
+
+echo
+if [ "$fail" -eq 0 ]; then echo "MISSION $1: ALL $pass PASSED. Colour your cell on the board."
+else echo "MISSION $1: $fail to fix. Follow the arrows above, then run ./check $1 again."; exit 1; fi

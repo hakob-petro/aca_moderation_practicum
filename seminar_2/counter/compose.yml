@@ -1,0 +1,15 @@
+# Fill in the three TODOs. Compose reads PORT from the .env file next to this one.
+services:
+  counter:
+    build: .
+    # TODO 1: publish the app's port 8000 on 127.0.0.1, at host port ${PORT}
+    ports:
+      - "TODO"
+    # TODO 2: start the app again by itself whenever it stops, unless you stopped it
+    restart: TODO
+    # TODO 3: keep /data in the named volume counter-data, declared at the bottom
+    volumes:
+      - TODO
+
+volumes:
+  counter-data:

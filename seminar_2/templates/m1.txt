@@ -1,0 +1,2 @@
+container_os=
+nginx_version=

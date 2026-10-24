@@ -51,7 +51,7 @@ own.
 ## The six sessions
 
 Each session's mission cards and checks are in its folder: start with
-[seminar_1](seminar_1/README.md).
+[seminar_1](seminar_1/README.md), then [seminar_2](seminar_2/README.md).
 
 | Session | You will |
 |---|---|

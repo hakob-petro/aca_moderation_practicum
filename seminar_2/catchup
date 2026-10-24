@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Seminar 2 catch-up.   Usage:  ./catchup N
+# Today's missions do not depend on each other, so there is nothing to restore.
+case "${1:-}" in
+  1|2|3|4)
+    echo "Seminar 2's missions do not depend on each other."
+    echo "Start mission $1 straight away: open mission_$1.md."
+    echo "Finish the one you skipped at home before the next session." ;;
+  *)
+    echo "Usage: ./catchup N   (N = 1, 2, 3 or 4)"; exit 2 ;;
+esac

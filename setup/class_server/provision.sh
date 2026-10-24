@@ -93,6 +93,9 @@ if [ ! -d "/home/$user/course/.git" ]; then
   sudo -u "$user" git clone -q https://github.com/hakob-petro/aca_moderation_practicum.git "/home/$user/course"
 fi
 
+# Docker, once docker_rootless.sh has been run on this server.
+if [ -x /usr/local/sbin/class-docker-user ]; then /usr/local/sbin/class-docker-user "$user" >/dev/null || echo "$user: Docker setup FAILED, see /home/$user/.docker-setup.log"; fi
+
 keys=$(grep -c . "/home/$user/.ssh/authorized_keys" 2>/dev/null || echo 0)
 if [ "$keys" -gt 0 ]; then note="$keys SSH key(s) from GitHub"
 else note="no SSH key on GitHub yet; it is picked up within a minute of being added"; fi
