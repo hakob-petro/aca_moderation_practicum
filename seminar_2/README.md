@@ -1,12 +1,16 @@
 # Seminar 2 — Docker
 
 Today you learn the tool almost every server runs on: containers. You run them,
-look inside them, build your own, fix a broken one, and describe a whole app in
-one file that brings itself back after a crash.
+look inside them, and give them ports and volumes. Then you run your own Open
+WebUI, a ChatGPT-like interface connected to a free AI model, use it from your
+laptop through an SSH tunnel, and make it permanent with Docker Compose.
 
 ---
 
 ## Before you start
+
+If you can, make a free account at https://openrouter.ai before the session:
+mission 3 needs it.
 
 Connect to the class server:
 
@@ -34,7 +38,7 @@ try again.
 
 **Your ports.** Everyone shares this server, so everyone gets their own ten
 port numbers: `$MYPORT` to `$MYPORT + 9`. Never use anyone else's. Today you
-need three: `$MYPORT`, `$((MYPORT+1))` and `$((MYPORT+2))`.
+need two: `$MYPORT` for mission 2 and `$((MYPORT+1))` for Open WebUI.
 
 ---
 
@@ -45,8 +49,8 @@ need three: `$MYPORT`, `$((MYPORT+1))` and `$((MYPORT+2))`.
 | 1 | [Containers by hand](mission_1.md) | by hand | 25 |
 | 2 | [Ports, volumes and a tunnel](mission_2.md) | by hand | 25 |
 | – | Break | | 5 |
-| 3 | [Broken on purpose](mission_3.md) | by hand | 30 |
-| 4 | [Compose, a crash and a restart](mission_4.md) | by hand | 30 |
+| 3 | [Your own Open WebUI](mission_3.md) | by hand | 30 |
+| 4 | [Make it permanent with Compose](mission_4.md) | by hand | 30 |
 
 Each card ends with the command that checks your work, for example:
 
@@ -57,8 +61,9 @@ Each card ends with the command that checks your work, for example:
 It prints **PASS** or **FAIL** for each part, and a hint for anything that
 failed. When everything passes, colour your cell on the board.
 
-**Out of time?** Run `./catchup N` before the next mission. Today's missions do
-not depend on each other, so you can always start the next one.
+**Out of time?** Run `./catchup N` before the next mission. Missions 1, 2 and 3
+do not depend on each other. Mission 4 builds on mission 3, and `./catchup 4`
+tells you how to start it anyway.
 
 **Stuck for 10 minutes?** Put a sticky note on your laptop lid.
 
@@ -70,8 +75,12 @@ explain an error, but not to do the mission.
 ## You are done when
 
 - `./check 1` to `./check 4` all pass
-- your counter app comes back by itself after a crash and after a Docker
-  restart, and still remembers its count
+- you chat with a free model in your own Open WebUI, from your laptop
+- it comes back by itself after a Docker restart, with your chats still there
 
 Anything you did not finish, finish at home before the next session: each
 mission's `./check` still works.
+
+**Homework, at home:** [Broken on purpose](homework/broken.md). An app with
+three bugs, found and fixed from what Docker tells you. `./check broken` checks
+it.

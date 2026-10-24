@@ -76,15 +76,111 @@ check2() {
   else bad "the page does not show your username, $USER" "edit ~/s2/site/index.html, then reload the page"; fi
 }
 
+# Runs a short SQL query in Open WebUI's own database, inside its container.
+owui_sql() {
+  docker exec "$1" python3 -c "
+import sqlite3, sys
+db = sqlite3.connect('/app/backend/data/webui.db')
+try:
+    print(db.execute(sys.argv[1]).fetchone()[0])
+except Exception:
+    print('')
+" "$2" 2>/dev/null
+}
+
+# Checks shared by missions 3 and 4: what is inside Open WebUI.
+owui_inside() {
+  local cid="$1" port="$2" users chats router
+  if curl -fsS -m 5 "http://127.0.0.1:$port/health" >/dev/null 2>&1; then ok "Open WebUI answers on 127.0.0.1:$port"
+  else bad "Open WebUI does not answer yet" "it takes up to a minute to start; docker logs shows its progress"; return; fi
+
+  users=$(owui_sql "$cid" "select count(*) from user")
+  if [ "${users:-0}" -ge 1 ]; then ok "an account exists ($users)"
+  else bad "no account yet" "open it through your tunnel and create your account first"; fi
+
+  router=$(docker exec "$cid" python3 -c "
+import sqlite3
+db = sqlite3.connect('/app/backend/data/webui.db')
+rows = db.execute('select * from config').fetchall()
+print('yes' if any('openrouter.ai' in str(r) for r in rows) else '')
+" 2>/dev/null)
+  [ -z "$router" ] && docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$cid" | grep -q 'openrouter.ai' && router=yes
+  if [ "$router" = "yes" ]; then ok "connected to OpenRouter"
+  else bad "not connected to OpenRouter yet" "Admin Panel, Settings, Connections: URL https://openrouter.ai/api/v1 and your key"; fi
+
+  chats=$(owui_sql "$cid" "select count(*) from chat")
+  if [ "${chats:-0}" -ge 1 ]; then ok "you have $chats chat(s)"
+  else bad "no chat yet" "New Chat, pick your free model, ask something"; fi
+}
+
+owui_volume_ok() {
+  local vol
+  vol=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/app/backend/data"}}{{.Type}} {{.Name}}{{end}}{{end}}' "$1")
+  if [ "$vol" = "volume openwebui-data" ]; then ok "its data is in the volume openwebui-data"
+  else bad "its data is not in the volume openwebui-data" "-v openwebui-data:/app/backend/data"; fi
+}
+
 check3() {
-  local port=$((MYPORT + 1)) page pub
+  local port=$((MYPORT + 1)) cid pub
+  need_docker || return
+
+  cid=$(docker ps -q --filter "publish=$port" | head -n 1)
+  if [ -z "$cid" ]; then bad "nothing is running on your port $port" "start Open WebUI with the docker run command in step 2"; return; fi
+  if docker inspect -f '{{.Config.Image}}' "$cid" | grep -q 'open-webui'; then ok "Open WebUI is running"
+  else bad "something else runs on your port $port" "docker ps shows what; remove it and start Open WebUI"; return; fi
+
+  pub=$(docker port "$cid" 8080 2>/dev/null | head -n 1)
+  if [ "$pub" = "127.0.0.1:$port" ]; then ok "published on 127.0.0.1:$port, your port"
+  else bad "published on ${pub:-nothing}" "-p 127.0.0.1:$port:8080"; fi
+
+  owui_volume_ok "$cid"
+  owui_inside "$cid" "$port"
+}
+
+check4() {
+  local dir="$HOME/s2/openwebui" port=$((MYPORT + 1)) cid policy pub
+  need_docker || return
+
+  if [ ! -f "$dir/compose.yml" ]; then
+    bad "no ~/s2/openwebui/compose.yml" "follow step 1 of mission 4"
+    return
+  fi
+  if grep -q '"TODO"\|: TODO\|- TODO' "$dir/compose.yml"; then bad "compose.yml still has a TODO" "fill in all three"; return; fi
+  ok "compose.yml is filled in"
+  if grep -q 'sk-or-' "$dir/compose.yml"; then bad "your OpenRouter key is written in compose.yml" "remove it: Open WebUI keeps it in its database, in the volume"
+  else ok "no key in compose.yml"; fi
+
+  if docker inspect openwebui >/dev/null 2>&1; then bad "the container from mission 3 still exists" "docker rm -f openwebui (the volume stays)"
+  else ok "the mission 3 container is gone"; fi
+
+  cid=$(cd "$dir" && docker compose ps -q openwebui 2>/dev/null | head -n 1)
+  if [ -z "$cid" ]; then bad "Open WebUI is not running from Compose" "cd ~/s2/openwebui && docker compose up -d"; return; fi
+  ok "Open WebUI runs from Compose"
+
+  policy=$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$cid")
+  case "$policy" in
+    always|unless-stopped|on-failure) ok "restart policy: $policy" ;;
+    *) bad "restart policy: ${policy:-none}" "restart: unless-stopped" ;;
+  esac
+
+  pub=$(docker port "$cid" 8080 2>/dev/null | head -n 1)
+  if [ "$pub" = "127.0.0.1:$port" ]; then ok "published on 127.0.0.1:$port, your port"
+  else bad "published on ${pub:-nothing}" "\"127.0.0.1:\${PORT}:8080\", with PORT=$port in .env"; fi
+
+  owui_volume_ok "$cid"
+  owui_inside "$cid" "$port"
+}
+
+# Homework: the app broken three ways.
+check_broken() {
+  local port=$((MYPORT + 3)) page pub
   need_docker || return
 
   if docker image inspect broken-app >/dev/null 2>&1; then ok "the image broken-app is built"
   else bad "no image called broken-app yet" "cd ~/s2/broken && docker build -t broken-app .   Then read the error"; return; fi
 
   if ! docker inspect fixed >/dev/null 2>&1; then
-    bad "no container called fixed" "run it with the command from the card"
+    bad "no container called fixed" "run it with the command from the homework card"
     return
   fi
   if running fixed; then ok "fixed is running"
@@ -99,55 +195,13 @@ check3() {
   else bad "published on ${pub:-nothing}" "use -p 127.0.0.1:$port:..."; fi
 }
 
-check4() {
-  local dir="$HOME/s2/counter" port=$((MYPORT + 2)) cid policy vol pub stats starts visits
-  need_docker || return
-
-  if [ ! -f "$dir/compose.yml" ]; then
-    bad "no ~/s2/counter/compose.yml" "mkdir -p ~/s2 && cp -r ~/course/seminar_2/counter ~/s2/counter"
-    return
-  fi
-  if grep -q 'TODO"\|: TODO\|- TODO' "$dir/compose.yml"; then
-    bad "compose.yml still has a TODO" "fill in all three"
-    return
-  fi
-  ok "compose.yml is filled in"
-
-  cid=$(cd "$dir" && docker compose ps -q counter 2>/dev/null | head -n 1)
-  if [ -z "$cid" ]; then bad "the counter is not running" "cd ~/s2/counter && docker compose up -d --build"; return; fi
-  ok "the counter is running"
-
-  policy=$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$cid")
-  case "$policy" in
-    always|unless-stopped|on-failure) ok "restart policy: $policy" ;;
-    *) bad "restart policy: ${policy:-none}" "restart: unless-stopped" ;;
-  esac
-
-  vol=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Type}} {{.Name}}{{end}}{{end}}' "$cid")
-  case "$vol" in
-    "volume "*counter-data) ok "/data is the named volume ${vol#volume }" ;;
-    *) bad "/data is not the named volume counter-data" "volumes:  - counter-data:/data" ;;
-  esac
-
-  pub=$(docker port "$cid" 8000 2>/dev/null | head -n 1)
-  if [ "$pub" = "127.0.0.1:$port" ]; then ok "published on 127.0.0.1:$port, your port"
-  else bad "published on ${pub:-nothing}" "\"127.0.0.1:\${PORT}:8000\", with PORT=$port in .env; if you made it public in step 5, put 127.0.0.1 back"; fi
-
-  stats=$(curl -fsS -m 5 "http://127.0.0.1:$port/stats" 2>/dev/null)
-  starts=$(printf '%s' "$stats" | sed -n 's/.*"starts": *\([0-9]*\).*/\1/p')
-  visits=$(printf '%s' "$stats" | sed -n 's/.*"visits": *\([0-9]*\).*/\1/p')
-  if [ "${starts:-0}" -ge 3 ]; then ok "the app has started $starts times and kept its count: it came back by itself"
-  else bad "the app has started only ${starts:-0} time(s)" "do steps 3 and 4: crash it, then down and up, then restart Docker"; fi
-  if [ "${visits:-0}" -ge 3 ]; then ok "$visits visits counted, kept in the volume"
-  else bad "only ${visits:-0} visit(s) counted" "curl 127.0.0.1:$port a few times"; fi
-}
-
 case "${1:-}" in
   1) check1 ;;
   2) check2 ;;
   3) check3 ;;
   4) check4 ;;
-  *) echo "Usage: ./check N   (N = 1, 2, 3 or 4)"; exit 2 ;;
+  broken) check_broken ;;
+  *) echo "Usage: ./check N   (N = 1, 2, 3 or 4; or: ./check broken, for the homework)"; exit 2 ;;
 esac
 
 echo

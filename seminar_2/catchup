@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
 # Seminar 2 catch-up.   Usage:  ./catchup N
-# Today's missions do not depend on each other, so there is nothing to restore.
 case "${1:-}" in
-  1|2|3|4)
-    echo "Seminar 2's missions do not depend on each other."
+  1|2|3)
+    echo "Missions 1, 2 and 3 do not depend on each other."
     echo "Start mission $1 straight away: open mission_$1.md."
     echo "Finish the one you skipped at home before the next session." ;;
+  4)
+    echo "Mission 4 builds on mission 3. If you did not finish mission 3:"
+    echo "  1. Get an OpenRouter key (mission 3, step 1)."
+    echo "  2. Do mission 4 from step 1. 'docker compose up -d' creates a fresh,"
+    echo "     empty openwebui-data volume."
+    echo "  3. Then do mission 3's steps 3 to 6 in your browser: tunnel, account,"
+    echo "     OpenRouter connection, a chat."
+    echo "./check 4 passes once all of that is done." ;;
   *)
     echo "Usage: ./catchup N   (N = 1, 2, 3 or 4)"; exit 2 ;;
 esac

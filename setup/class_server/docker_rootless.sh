@@ -7,7 +7,8 @@
 #
 # Each student gets their own Docker daemon, running as them: they see only
 # their own containers and images, and their containers count against their
-# own memory and CPU limits. Each student also gets 10 ports of their own,
+# own memory and CPU limits, and can reach the internet from containers (Open
+# WebUI talks to OpenRouter). Each student also gets 10 ports of their own,
 # starting at $MYPORT. Students added later get Docker from class-add-student.
 # Safe to run again.
 set -euo pipefail
@@ -96,10 +97,17 @@ as_user systemctl --user restart docker >/dev/null 2>&1
 
 for _ in $(seq 1 40); do as_user docker info >/dev/null 2>&1 && break; sleep 1; done
 if as_user docker info >/dev/null 2>&1; then
-  for img in hello-world nginx:1.27-alpine python:3.12-slim; do
+  for img in hello-world nginx:1.27-alpine python:3.12-slim ghcr.io/open-webui/open-webui:main-slim; do
     as_user docker pull -q "$img" >/dev/null 2>&1 || echo "$user: could not pull $img"
   done
-  printf '%-20s Docker OK, ports %s-%s\n' "$user" $((10000 + (uid - 1000) * 10)) $((10009 + (uid - 1000) * 10))
+  # Open WebUI must reach openrouter.ai from inside its container.
+  if as_user docker run --rm python:3.12-slim python -c \
+      "import urllib.request; urllib.request.urlopen('https://openrouter.ai/api/v1/models', timeout=15)" >/dev/null 2>&1; then
+    net="containers reach the internet"
+  else
+    net="NO INTERNET FROM CONTAINERS: Open WebUI cannot reach OpenRouter"
+  fi
+  printf '%-20s Docker OK, ports %s-%s, %s\n' "$user" $((10000 + (uid - 1000) * 10)) $((10009 + (uid - 1000) * 10)) "$net"
 else
   printf '%-20s Docker FAILED: see %s\n' "$user" "$log"
   exit 1
@@ -121,4 +129,3 @@ if [ "$failed" -gt 0 ]; then
   echo "Last resort: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0, then run this again."
 fi
 echo "Students added later get Docker automatically from class-add-student."
-echo "For the exposure step in mission 4, open TCP 10000-10999 in the cloud firewall, then close it after the session."

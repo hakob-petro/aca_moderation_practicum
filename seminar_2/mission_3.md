@@ -1,58 +1,87 @@
-# Mission 3 — Broken on purpose
+# Mission 3 — Your own Open WebUI
 
 **Mode:** by hand · **Time:** 30 minutes
 
-A tiny web app that should say "Hello from" your name. It has **three bugs**.
-Find and fix them, using only what Docker tells you. This is most of the job of
-running containers: something fails, and you work out why from what it prints.
+**Open WebUI** is a chat interface, like ChatGPT's, that you run yourself and
+connect to any AI model provider. Today you run your own copy in Docker on the
+server, connect it to a free model on **OpenRouter**, and use it from your
+laptop's browser through an SSH tunnel.
 
-`app.py` is fine. The bugs are in the `Dockerfile` and in the `docker run`
-command below.
+Your port for Open WebUI is `$((MYPORT+1))`. See its number:
+
+```
+echo $((MYPORT+1))
+```
 
 ---
 
-## Start
+## Steps
 
-```
-mkdir -p ~/s2
-cp -r ~/course/seminar_2/broken ~/s2/broken
-cd ~/s2/broken
-cat app.py
-cat Dockerfile
-```
+1. **Get an OpenRouter key.** On your **laptop**, open https://openrouter.ai,
+   sign in (Google or GitHub works), then go to **Keys** → **Create key**. Copy
+   the key: it starts with `sk-or-`.
 
-Then build the image and run it, exactly as written:
+   > An API key is a password. Never paste it into a chat, a file in git, or a
+   > screenshot.
 
-```
-docker build -t broken-app .
-docker run -d --name fixed -p 127.0.0.1:$((MYPORT+1)):80 broken-app
-curl localhost:$((MYPORT+1))
-```
+2. **Run Open WebUI** on the server, with a volume for its data:
 
-It will not work. That is the point.
+   ```
+   docker run -d --name openwebui \
+     -p 127.0.0.1:$((MYPORT+1)):8080 \
+     -v openwebui-data:/app/backend/data \
+     ghcr.io/open-webui/open-webui:main-slim
+   ```
 
----
+   It takes up to a minute to start. Watch it, and press Ctrl+C when it says it
+   is running (that only stops the watching, not Open WebUI):
 
-## How to find the bugs
+   ```
+   docker logs -f openwebui
+   ```
 
-| Tool | What it tells you |
-|---|---|
-| the last lines of `docker build` | why a build failed |
-| `docker ps -a` | whether the container is running, or `Exited` |
-| `docker logs fixed` | everything the app printed, including why it crashed |
-| `docker port fixed` | which port on the server goes to which port in the container |
-| `curl -v localhost:$((MYPORT+1))` | what happens when you connect |
+   Then check it answers:
 
-**Each time you change something:** remove the old container
-(`docker rm -f fixed`), rebuild if you changed the `Dockerfile`, and run again.
+   ```
+   curl localhost:$((MYPORT+1))/health
+   ```
 
-`./check 3` gives a hint for whichever bug you are stuck on.
+3. **Open a tunnel from your laptop.** On your **laptop**, in a new terminal,
+   with your port number instead of `10011`:
+
+   ```
+   ssh -N -L 3000:localhost:10011 ws
+   ```
+
+   Leave it open, and open http://localhost:3000 in your laptop's browser.
+
+4. **Create your account, now.** The **first** account created on an Open WebUI
+   becomes its **administrator**. Everyone on this server can reach your port,
+   so do this before anything else. Any email address works; it never leaves
+   your server.
+
+5. **Connect OpenRouter.** Click your name (bottom left) → **Admin Panel** →
+   **Settings** → **Connections**, and add a connection:
+
+   | Field | Value |
+   |---|---|
+   | Provider | **OpenAI** (OpenRouter speaks the same API) |
+   | URL | `https://openrouter.ai/api/v1` |
+   | Key | your `sk-or-` key |
+   | Prefix ID | `openrouter` |
+   | Model IDs | one free model, see below |
+
+   OpenRouter has thousands of models, so list only the one you want. On your
+   laptop, open https://openrouter.ai/models, filter by **free**, and copy the
+   ID of one model. Free models' IDs end in `:free`. Paste it into **Model
+   IDs**, then **Save**.
+
+6. **Chat.** Click **New Chat**, pick your model at the top, and ask it
+   something.
 
 ---
 
 ## Check
-
-When `curl localhost:$((MYPORT+1))` answers "Hello from" a name:
 
 ```
 cd ~/course/seminar_2
@@ -65,12 +94,11 @@ cd ~/course/seminar_2
 
 Be ready to answer these if your instructor asks:
 
-1. The container started and stopped at once. Where did you find out why?
-2. In `-p 127.0.0.1:10011:8000`, which number is a port on the server, and
-   which is a port inside the container?
+1. Why did you create your account the moment Open WebUI opened?
+2. Open WebUI is published only on 127.0.0.1 on the server. Describe the path
+   your browser's request takes to reach it.
 
 ---
 
-**Bonus:** set the name in the `Dockerfile` with an `ENV` line, so the
-`docker run` command does not need `-e`. Then think: where should a secret, like
-an API key, go instead, and why neither of these?
+**Bonus:** add a second free model to the connection's Model IDs, ask both the
+same question, and compare the answers.

@@ -1,95 +1,71 @@
-# Mission 4 — Compose, a crash and a restart
+# Mission 4 — Make it permanent with Compose
 
 **Mode:** by hand · **Time:** 30 minutes
 
-Typing long `docker run` commands does not scale. **Docker Compose** describes an
-app in one file, `compose.yml`, and starts it with one command. Today's app counts
-visits and keeps the count in a **volume**, so the count survives the container
-being thrown away. And it **restarts itself** when it crashes.
+Your Open WebUI runs, but only because you typed a long `docker run` command
+once. **Docker Compose** describes it in a file, `compose.yml`, so anyone can
+start it again with one command. You will also make it **restart by itself**,
+and prove that your account and chats live in the **volume**, not in the
+container.
 
 ---
 
 ## Steps
 
-1. **Set it up.** Copy the app, give it your port, and open the file:
+1. **Set it up.** Copy the template, give it your port, and open it:
 
    ```
-   mkdir -p ~/s2
-   cp -r ~/course/seminar_2/counter ~/s2/counter
-   cd ~/s2/counter
-   echo "PORT=$((MYPORT+2))" > .env
+   mkdir -p ~/s2/openwebui
+   cp ~/course/seminar_2/openwebui/compose.yml ~/s2/openwebui/
+   cd ~/s2/openwebui
+   echo "PORT=$((MYPORT+1))" > .env
    cat .env
    nano compose.yml
    ```
 
-   Compose reads `PORT` from `.env` by itself. Fill in the three `TODO`s in
-   `compose.yml`, then start it:
+   Compose reads `PORT` from `.env` by itself. Fill in the three `TODO`s.
+
+2. **Throw away the container from mission 3**, but keep its volume:
 
    ```
-   docker compose up -d --build
+   docker rm -f openwebui
+   docker volume ls
    ```
 
-   If it complains, read the message: it names the line.
+   The container is gone. The volume `openwebui-data`, with your account and
+   chats in it, is still there.
 
-2. **Use it.** Visit a few times:
-
-   ```
-   curl localhost:$((MYPORT+2))
-   curl localhost:$((MYPORT+2))
-   curl localhost:$((MYPORT+2))
-   ```
-
-3. **Crash it.**
+3. **Start it with Compose:**
 
    ```
-   curl localhost:$((MYPORT+2))/crash
+   docker compose up -d
    docker compose ps
-   curl localhost:$((MYPORT+2))
    ```
 
-   `docker compose ps` says it has been up only a few seconds: it came back by
-   itself. And the count went on where it was.
+   If it complains, read the message: it names the line. Your tunnel from
+   mission 3 uses the same port, so just reload http://localhost:3000. You are
+   still logged in, and your chat is still there: it came from the volume.
 
-4. **Throw it away, and restart Docker itself.**
+4. **Take it down, and bring it back:**
 
    ```
    docker compose down
    docker compose up -d
-   curl localhost:$((MYPORT+2))
    ```
 
-   `down` deletes the container. The count is still there: it lives in the
-   volume, not in the container. Now restart your whole Docker:
+   Reload the page. Still there.
+
+5. **Restart your whole Docker:**
 
    ```
    systemctl --user restart docker
-   sleep 10
+   sleep 15
    docker compose ps
-   curl localhost:$((MYPORT+2))
-   ```
-
-   It is back by itself, because of its restart policy. Now look at all your
-   containers:
-
-   ```
    docker ps -a
    ```
 
-   `site` and `fixed` from missions 2 and 3 did **not** come back: they had no
-   restart policy. Start them again with `docker start site fixed` if you want
-   them.
-
-5. **Open it to the internet, then close it again.** Only if your instructor
-   says the server's firewall is open for your ports.
-   - In `compose.yml`, change `"127.0.0.1:${PORT}:8000"` to `"${PORT}:8000"`,
-     then `docker compose up -d`.
-   - Ask a neighbour to open `http://SERVER-IP:YOUR-PORT` in **their laptop's**
-     browser. Your app is now on the internet.
-   - Put `127.0.0.1:` back, then `docker compose up -d`. Your neighbour's
-     browser can no longer reach it.
-   - Now ask your neighbour to run `curl localhost:YOUR-PORT` **on the server**.
-     It still works. 127.0.0.1 hides a port from the internet, not from other
-     people on the same server.
+   Open WebUI is back by itself, because of its restart policy. The `site`
+   container from mission 2 did **not** come back: it had no restart policy.
 
 ---
 
@@ -106,12 +82,13 @@ cd ~/course/seminar_2
 
 Be ready to answer these if your instructor asks:
 
-1. After `docker compose down`, the container was gone. Why was the count still
-   there?
-2. On a shared server, what is the difference between publishing on
-   `127.0.0.1` and publishing on every address?
+1. You deleted the container from mission 3, yet your account and chats
+   survived. Why?
+2. Where is your OpenRouter key stored now? Why is that better than writing it
+   into `compose.yml`?
 
 ---
 
-**Bonus:** `docker volume ls`, then `docker volume inspect counter_counter-data`.
-Where on the server does your count actually live?
+**Bonus:** stop Open WebUI with `docker compose stop`, then restart Docker
+again. Does it come back this time? Why not? (Look at what `unless-stopped`
+means.)
