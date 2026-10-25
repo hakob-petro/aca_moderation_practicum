@@ -1,0 +1,561 @@
+<!doctype html>
+<!--
+  Source of ../how_docker_works.pdf. To rebuild, from this folder:
+    google-chrome --headless --no-pdf-header-footer --print-to-pdf=../how_docker_works.pdf how_docker_works.html
+  (on macOS: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" instead of google-chrome)
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How Docker works</title>
+<style>
+  @page {
+    size: A4;
+    margin: 16mm 17mm 20mm 17mm;
+    @bottom-left   { content: "Moderation practicum \00B7  Seminar 2"; font: 8pt 'Liberation Sans', 'Helvetica Neue', Arial, sans-serif; color: #5b6470; }
+    @bottom-right  { content: counter(page) " / " counter(pages); font: 8pt 'Liberation Sans', 'Helvetica Neue', Arial, sans-serif; color: #5b6470; }
+  }
+  :root {
+    --text: #1b1f24; --muted: #5b6470; --line: #d5dae1; --soft: #f3f5f8;
+    --blue: #1f5fbf; --blue-soft: #e8f0fc;
+    --red: #b4361f;  --red-soft: #fcebe7;
+    --green: #1d7a4b; --green-soft: #e6f4ec;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; color: var(--text); background: #fff;
+         font: 10pt/1.4 'Liberation Sans', 'Helvetica Neue', Arial, 'DejaVu Sans', sans-serif; }
+  h1 { font-size: 26pt; line-height: 1.1; margin: 0 0 4pt; letter-spacing: -0.5pt; }
+  .sub { font-size: 12pt; color: var(--muted); margin: 0 0 14pt; }
+  h2 { font-size: 14pt; margin: 15pt 0 5pt; padding-top: 8pt; border-top: 1.5pt solid var(--text);
+       break-after: avoid; }
+  h2 .num { color: var(--blue); margin-right: 6pt; }
+  h3 { font-size: 10.5pt; margin: 12pt 0 3pt; break-after: avoid; }
+  p { margin: 0 0 6pt; }
+  ul, ol { margin: 0 0 8pt; padding-left: 16pt; }
+  li { margin-bottom: 2pt; }
+  code, .mono { font-family: 'DejaVu Sans Mono', Menlo, monospace; font-size: 8.6pt; }
+  code { background: var(--soft); border: 0.5pt solid var(--line); border-radius: 2pt; padding: 0 2.5pt; }
+  pre { font: 8.6pt/1.4 'DejaVu Sans Mono', Menlo, monospace; background: var(--soft); border: 0.5pt solid var(--line);
+        border-radius: 3pt; padding: 6pt 8pt; margin: 4pt 0 8pt; white-space: pre-wrap; break-inside: avoid; }
+  pre .c { color: var(--muted); }
+  .out { color: var(--blue); font-weight: bold; }
+  .in  { color: var(--green); font-weight: bold; }
+  table.vol td:first-child { width: 16%; }
+  .box { border: 1pt solid var(--blue); background: var(--blue-soft); border-radius: 4pt;
+         padding: 8pt 11pt 4pt; margin: 6pt 0 10pt; break-inside: avoid; }
+  .box h3 { margin-top: 0; color: var(--blue); }
+  .note { border-left: 3pt solid var(--line); padding: 1pt 0 1pt 9pt; color: var(--muted); margin: 6pt 0 9pt; break-inside: avoid; }
+  .warn { border: 1pt solid var(--red); background: var(--red-soft); border-radius: 4pt;
+          padding: 7pt 11pt 3pt; margin: 6pt 0 10pt; break-inside: avoid; }
+  .warn h3 { margin-top: 0; color: var(--red); }
+  .two { display: flex; gap: 10pt; margin: 6pt 0 10pt; }
+  .card { flex: 1; border-radius: 4pt; padding: 8pt 10pt 3pt; break-inside: avoid; }
+  .card h3 { margin: 0 0 3pt; }
+  .img  { background: var(--blue-soft);  border: 1pt solid var(--blue); }
+  .img h3 { color: var(--blue); }
+  .ctr  { background: var(--green-soft); border: 1pt solid var(--green); }
+  .ctr h3 { color: var(--green); }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; margin: 4pt 0 10pt;
+          border: 0.5pt solid var(--line); break-inside: auto; }
+  table.keep { break-inside: avoid; }
+  th, td { border-right: 0.5pt solid var(--line); border-bottom: 0.5pt solid var(--line);
+           padding: 3pt 6pt; text-align: left; vertical-align: top; }
+  th:last-child, td:last-child { border-right: 0; }
+  tbody tr:last-child td { border-bottom: 0; }
+  thead { display: table-header-group; }
+  th { background: var(--soft); font-size: 9pt; }
+  tr { break-inside: avoid; }
+  td:first-child { width: 31%; }
+  table.cmds td:first-child { width: 40%; }
+  figure { margin: 8pt 0 10pt; break-inside: avoid; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: 8.5pt; color: var(--muted); margin-top: 3pt; }
+  dl { margin: 4pt 0; display: grid; grid-template-columns: 30% 1fr; column-gap: 8pt; row-gap: 3pt; }
+  dt { font-weight: bold; }
+  dd { margin: 0; }
+  .steps { counter-reset: s; list-style: none; padding-left: 0; }
+  .steps li { counter-increment: s; position: relative; padding-left: 22pt; margin-bottom: 6pt; break-inside: avoid; }
+  .steps li::before { content: counter(s); position: absolute; left: 0; top: 0.5pt; width: 14pt; height: 14pt;
+        border-radius: 50%; background: var(--blue); color: #fff; font-weight: bold; font-size: 8.5pt;
+        text-align: center; line-height: 14pt; }
+</style>
+</head>
+<body>
+
+<h1>How Docker works</h1>
+<p class="sub">What a container is, what <code>docker run</code> does, and how ports and volumes fit in.</p>
+
+<div class="box">
+  <h3>The one-minute version</h3>
+  <ul>
+    <li>An <b>image</b> is a packaged program: the app plus everything it needs to run (system files, Python, libraries), frozen into read-only <b>layers</b>.</li>
+    <li>A <b>container</b> is a running copy of an image. It is an ordinary process on the server, fenced off so that it sees only its own files, processes and network.</li>
+    <li>Containers are <b>not virtual machines</b>. They share the server's Linux kernel, so they start in a second and cost almost nothing extra.</li>
+    <li>A container is disposable: what it writes is lost when you delete it, unless you keep it in a <b>volume</b>. To reach it from outside, you <b>publish a port</b>.</li>
+  </ul>
+</div>
+
+<h2><span class="num">1</span>Why Docker exists</h2>
+<p>"It works on my machine." A program needs the right version of Python, the right libraries, the right system tools and settings. Your laptop has one mix, the server another, a classmate's laptop a third. Installing everything by hand on every machine is slow, and two programs often need versions that conflict.</p>
+<p><b>Docker</b> packs a program <i>together with its whole environment</i> into one image. The same image runs the same way on your laptop, on the class server and in the cloud. You do not install Open WebUI, its Python and its hundreds of libraries: you run one image, and delete it when you are done, leaving nothing behind.</p>
+<p>This is how most software is deployed today. Later in this course, <b>vLLM</b> runs from a Docker image, and <b>Modal</b> runs your training inside containers built from images.</p>
+
+<h2><span class="num">2</span>Images and containers</h2>
+
+<div class="two">
+  <div class="card img">
+    <h3>Image: <span class="mono">nginx:1.27-alpine</span></h3>
+    <ul>
+      <li>The packaged program. <b>Read-only</b>: it never changes.</li>
+      <li>Downloaded with <code>docker pull</code>, or built with <code>docker build</code>.</li>
+      <li>Listed by <code>docker images</code>.</li>
+    </ul>
+  </div>
+  <div class="card ctr">
+    <h3>Container: <span class="mono">web</span></h3>
+    <ul>
+      <li>One running (or stopped) copy of an image, with a name you choose.</li>
+      <li>Made with <code>docker run</code>. One image can have many containers.</li>
+      <li>Listed by <code>docker ps</code> (running) and <code>docker ps -a</code> (all).</li>
+    </ul>
+  </div>
+</div>
+
+<p><b>An analogy you know from Python:</b> an image is a <b>class</b>, a container is an <b>object</b>. You define the class once; you can make many objects from it; each object has its own state; deleting an object does not touch the class.</p>
+
+<h3>Image names</h3>
+<p><code>ghcr.io/open-webui/open-webui:main-slim</code> reads as <i>registry</i> <code>ghcr.io</code> (GitHub's), <i>name</i> <code>open-webui/open-webui</code>, <i>tag</i> <code>main-slim</code> (a version or variant). With no registry, Docker uses <b>Docker Hub</b>: <code>nginx</code> means <code>docker.io/library/nginx</code>. With no tag, it means <code>:latest</code>, so always give a tag when you care which version you get.</p>
+
+<h3>Layers</h3>
+<p>An image is a stack of read-only <b>layers</b>, one for each step that built it. A running container adds one thin <b>writable layer</b> on top. When the container changes a file, the changed copy goes into its writable layer; the image below stays untouched. That is why many containers can share one image, and why deleting a container throws away exactly what it wrote.</p>
+
+<figure>
+<svg viewBox="0 0 760 300" role="img" aria-label="An image as a stack of read-only layers, with two containers on top, each with its own writable layer">
+  <style>
+    text { font-family: 'Liberation Sans','Helvetica Neue',Arial,sans-serif; fill: #1b1f24; }
+    .t  { font-size: 12.5px; }
+    .tb { font-size: 12.5px; font-weight: bold; }
+    .n  { font-size: 11px; fill: #5b6470; }
+    .m  { font-family: 'DejaVu Sans Mono',Menlo,monospace; font-size: 10.5px; fill: #5b6470; }
+    .br { stroke: #5b6470; stroke-width: 1.2; fill: none; }
+  </style>
+
+  <!-- processes -->
+  <rect x="190" y="10" width="175" height="34" rx="5" fill="#fff" stroke="#1d7a4b" stroke-width="1.2"/>
+  <text x="277" y="31" text-anchor="middle" class="tb" style="fill:#1d7a4b">container web-1: running</text>
+  <rect x="385" y="10" width="175" height="34" rx="5" fill="#fff" stroke="#1d7a4b" stroke-width="1.2"/>
+  <text x="472" y="31" text-anchor="middle" class="tb" style="fill:#1d7a4b">container web-2: stopped</text>
+
+  <!-- writable layers -->
+  <rect x="190" y="56" width="175" height="34" rx="4" fill="#e6f4ec" stroke="#1d7a4b" stroke-dasharray="4 3"/>
+  <text x="277" y="77" text-anchor="middle" class="t">writable layer</text>
+  <rect x="385" y="56" width="175" height="34" rx="4" fill="#e6f4ec" stroke="#1d7a4b" stroke-dasharray="4 3"/>
+  <text x="472" y="77" text-anchor="middle" class="t">writable layer</text>
+
+  <!-- image layers -->
+  <rect x="190" y="110" width="370" height="38" rx="4" fill="#e8f0fc" stroke="#1f5fbf"/>
+  <text x="204" y="133" class="t">Your code</text>
+  <text x="575" y="133" class="m">COPY . .</text>
+  <rect x="190" y="152" width="370" height="38" rx="4" fill="#e8f0fc" stroke="#1f5fbf"/>
+  <text x="204" y="175" class="t">Your libraries</text>
+  <text x="575" y="175" class="m">RUN pip install ...</text>
+  <rect x="190" y="194" width="370" height="38" rx="4" fill="#e8f0fc" stroke="#1f5fbf"/>
+  <text x="204" y="217" class="t">Python 3.12</text>
+  <text x="575" y="210" class="m">FROM</text>
+  <text x="575" y="224" class="m">python:3.12-slim</text>
+  <rect x="190" y="236" width="370" height="38" rx="4" fill="#e8f0fc" stroke="#1f5fbf"/>
+  <text x="204" y="259" class="t">Debian base system files</text>
+  <text x="575" y="245" class="m">  (its own</text>
+  <text x="575" y="259" class="m">   layers)</text>
+
+  <!-- brackets -->
+  <path d="M178,56 L170,56 L170,90 L178,90" class="br"/>
+  <text x="162" y="70" text-anchor="end" class="tb">each container:</text>
+  <text x="162" y="85" text-anchor="end" class="n">its own, deleted with it</text>
+  <path d="M178,110 L170,110 L170,274 L178,274" class="br"/>
+  <text x="162" y="185" text-anchor="end" class="tb">the image:</text>
+  <text x="162" y="200" text-anchor="end" class="n">read-only, shared</text>
+  <text x="162" y="214" text-anchor="end" class="n">by all its containers</text>
+  <text x="575" y="100" class="n">built by these Dockerfile lines:</text>
+</svg>
+<figcaption>Two containers from one image. The image's layers are shared and never change; each container writes only into its own top layer.</figcaption>
+</figure>
+
+<h2><span class="num">3</span>Containers are not virtual machines</h2>
+<p>A <b>virtual machine</b> pretends to be a whole computer and runs a complete operating system of its own, kernel included. A <b>container</b> is just a process on the server's own Linux, run with fences around it.</p>
+
+<figure>
+<svg viewBox="0 0 760 250" role="img" aria-label="Virtual machines each run their own operating system; containers share the host's kernel">
+  <style>
+    text { font-family: 'Liberation Sans','Helvetica Neue',Arial,sans-serif; fill: #1b1f24; }
+    .h  { font-size: 14px; font-weight: bold; }
+    .t  { font-size: 11.5px; }
+    .tb { font-size: 11.5px; font-weight: bold; }
+  </style>
+  <text x="190" y="18" text-anchor="middle" class="h">Virtual machines</text>
+  <text x="570" y="18" text-anchor="middle" class="h">Containers</text>
+
+  <!-- VM side -->
+  <g>
+    <rect x="12"  y="30" width="112" height="28" rx="4" fill="#e6f4ec" stroke="#1d7a4b"/><text x="68"  y="48" text-anchor="middle" class="t">App A</text>
+    <rect x="134" y="30" width="112" height="28" rx="4" fill="#e6f4ec" stroke="#1d7a4b"/><text x="190" y="48" text-anchor="middle" class="t">App B</text>
+    <rect x="256" y="30" width="112" height="28" rx="4" fill="#e6f4ec" stroke="#1d7a4b"/><text x="312" y="48" text-anchor="middle" class="t">App C</text>
+    <rect x="12"  y="62" width="112" height="28" rx="4" fill="#e8f0fc" stroke="#1f5fbf"/><text x="68"  y="80" text-anchor="middle" class="t">Libraries</text>
+    <rect x="134" y="62" width="112" height="28" rx="4" fill="#e8f0fc" stroke="#1f5fbf"/><text x="190" y="80" text-anchor="middle" class="t">Libraries</text>
+    <rect x="256" y="62" width="112" height="28" rx="4" fill="#e8f0fc" stroke="#1f5fbf"/><text x="312" y="80" text-anchor="middle" class="t">Libraries</text>
+    <rect x="12"  y="94" width="112" height="44" rx="4" fill="#fcebe7" stroke="#b4361f"/><text x="68"  y="112" text-anchor="middle" class="tb">Guest OS</text><text x="68"  y="128" text-anchor="middle" class="t">+ its kernel</text>
+    <rect x="134" y="94" width="112" height="44" rx="4" fill="#fcebe7" stroke="#b4361f"/><text x="190" y="112" text-anchor="middle" class="tb">Guest OS</text><text x="190" y="128" text-anchor="middle" class="t">+ its kernel</text>
+    <rect x="256" y="94" width="112" height="44" rx="4" fill="#fcebe7" stroke="#b4361f"/><text x="312" y="112" text-anchor="middle" class="tb">Guest OS</text><text x="312" y="128" text-anchor="middle" class="t">+ its kernel</text>
+    <rect x="12" y="146" width="356" height="30" rx="4" fill="#f3f5f8" stroke="#9aa3ae"/><text x="190" y="166" text-anchor="middle" class="t">Hypervisor: pretends to be three computers</text>
+    <rect x="12" y="180" width="356" height="30" rx="4" fill="#f3f5f8" stroke="#9aa3ae"/><text x="190" y="200" text-anchor="middle" class="t">Host operating system</text>
+    <rect x="12" y="214" width="356" height="30" rx="4" fill="#d5dae1" stroke="#9aa3ae"/><text x="190" y="234" text-anchor="middle" class="t">Hardware</text>
+  </g>
+
+  <!-- container side -->
+  <g>
+    <rect x="392" y="62" width="112" height="28" rx="4" fill="#e6f4ec" stroke="#1d7a4b"/><text x="448" y="80" text-anchor="middle" class="t">App A</text>
+    <rect x="514" y="62" width="112" height="28" rx="4" fill="#e6f4ec" stroke="#1d7a4b"/><text x="570" y="80" text-anchor="middle" class="t">App B</text>
+    <rect x="636" y="62" width="112" height="28" rx="4" fill="#e6f4ec" stroke="#1d7a4b"/><text x="692" y="80" text-anchor="middle" class="t">App C</text>
+    <rect x="392" y="94" width="112" height="44" rx="4" fill="#e8f0fc" stroke="#1f5fbf"/><text x="448" y="112" text-anchor="middle" class="t">Libraries</text><text x="448" y="128" text-anchor="middle" class="t">+ system files</text>
+    <rect x="514" y="94" width="112" height="44" rx="4" fill="#e8f0fc" stroke="#1f5fbf"/><text x="570" y="112" text-anchor="middle" class="t">Libraries</text><text x="570" y="128" text-anchor="middle" class="t">+ system files</text>
+    <rect x="636" y="94" width="112" height="44" rx="4" fill="#e8f0fc" stroke="#1f5fbf"/><text x="692" y="112" text-anchor="middle" class="t">Libraries</text><text x="692" y="128" text-anchor="middle" class="t">+ system files</text>
+    <rect x="392" y="146" width="356" height="30" rx="4" fill="#f3f5f8" stroke="#9aa3ae"/><text x="570" y="166" text-anchor="middle" class="t">Docker</text>
+    <rect x="392" y="180" width="356" height="30" rx="4" fill="#fcebe7" stroke="#b4361f"/><text x="570" y="200" text-anchor="middle" class="t"><tspan class="tb">One Linux kernel</tspan>, shared by every container</text>
+    <rect x="392" y="214" width="356" height="30" rx="4" fill="#d5dae1" stroke="#9aa3ae"/><text x="570" y="234" text-anchor="middle" class="t">Hardware</text>
+  </g>
+</svg>
+<figcaption>Red marks a kernel. Three virtual machines run three operating systems; three containers share one kernel.</figcaption>
+</figure>
+
+<table class="keep">
+  <thead><tr><th></th><th>Virtual machine</th><th>Container</th></tr></thead>
+  <tbody>
+  <tr><td>Starts in</td><td>tens of seconds: it boots an operating system</td><td>about a second: it starts one process</td></tr>
+  <tr><td>Size</td><td>gigabytes: a whole operating system</td><td>megabytes to a few gigabytes: only what the app needs</td></tr>
+  <tr><td>Can run</td><td>any operating system, Windows included</td><td>Linux programs, on the host's Linux kernel</td></tr>
+  <tr><td>Isolation</td><td>strong: separate kernels</td><td>good, but one shared kernel</td></tr>
+  </tbody>
+</table>
+<p>Your class server is itself a virtual machine in Google's data centre, and your containers run inside it.</p>
+
+<h3>The fences: namespaces and cgroups</h3>
+<p>Two features of the Linux kernel make a process into a container:</p>
+<ul>
+  <li><b>Namespaces</b> decide what a process can <b>see</b>. In its own namespaces, a container sees its own files (the image's layers), its own list of processes, its own network and its own hostname. Its main program believes it is process number 1.</li>
+  <li><b>Control groups (cgroups)</b> decide how much a process can <b>use</b>: memory, CPU time, number of processes. <code>docker run -m 100m</code> caps a container at 100 MB. The same mechanism caps <i>you</i> at 3 GB and 2 CPUs on the class server.</li>
+</ul>
+<p>You can see both in section 12.</p>
+
+<h2><span class="num">4</span>What happens when you type <code>docker run</code></h2>
+<p>The <code>docker</code> command does not run containers itself. It is a <b>client</b> that sends your request to the <b>Docker daemon</b> (<code>dockerd</code>), a program that runs in the background and does the work. The variable <code>$DOCKER_HOST</code> tells the client where to find the daemon.</p>
+
+<figure>
+<svg viewBox="0 0 760 450" role="img" aria-label="Sequence diagram: the docker client, the Docker daemon and a registry during docker run">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1b1f24"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: 'Liberation Sans','Helvetica Neue',Arial,sans-serif; fill: #1b1f24; }
+    .t  { font-size: 12.5px; }
+    .tb { font-size: 13px; font-weight: bold; }
+    .n  { font-size: 11px; fill: #5b6470; }
+    .ln { stroke: #1b1f24; stroke-width: 1.4; marker-end: url(#a); }
+    .life{ stroke: #9aa3ae; stroke-width: 1.2; stroke-dasharray: 4 4; }
+  </style>
+
+  <rect x="40"  y="8" width="170" height="46" rx="6" fill="#e8f0fc" stroke="#1f5fbf" stroke-width="1.3"/>
+  <text x="125" y="28" text-anchor="middle" class="tb">You: docker</text>
+  <text x="125" y="44" text-anchor="middle" class="n">the client, in your terminal</text>
+  <rect x="295" y="8" width="170" height="46" rx="6" fill="#e8f0fc" stroke="#1f5fbf" stroke-width="1.3"/>
+  <text x="380" y="28" text-anchor="middle" class="tb">Docker daemon</text>
+  <text x="380" y="44" text-anchor="middle" class="n">dockerd, in the background</text>
+  <rect x="550" y="8" width="170" height="46" rx="6" fill="#e8f0fc" stroke="#1f5fbf" stroke-width="1.3"/>
+  <text x="635" y="28" text-anchor="middle" class="tb">Registry</text>
+  <text x="635" y="44" text-anchor="middle" class="n">Docker Hub, ghcr.io, ...</text>
+  <line x1="125" y1="54" x2="125" y2="440" class="life"/>
+  <line x1="380" y1="54" x2="380" y2="440" class="life"/>
+  <line x1="635" y1="54" x2="635" y2="440" class="life"/>
+
+  <!-- 1 -->
+  <line x1="125" y1="92" x2="380" y2="92" class="ln"/>
+  <text x="252" y="84" text-anchor="middle" class="t">① "run nginx:1.27-alpine"</text>
+  <text x="252" y="106" text-anchor="middle" class="n">through the socket in $DOCKER_HOST</text>
+
+  <!-- 2 -->
+  <text x="392" y="132" class="n">Is the image here already?</text>
+  <text x="392" y="145" class="n">If not:</text>
+  <line x1="380" y1="166" x2="635" y2="166" class="ln"/>
+  <text x="507" y="158" text-anchor="middle" class="t">② "send me nginx:1.27-alpine"</text>
+  <line x1="635" y1="204" x2="380" y2="204" class="ln"/>
+  <text x="507" y="196" text-anchor="middle" class="t">③ its layers, one by one</text>
+  <text x="507" y="218" text-anchor="middle" class="n">layers it already has are skipped</text>
+
+  <!-- 4 -->
+  <rect x="300" y="236" width="160" height="78" rx="5" fill="#f3f5f8" stroke="#9aa3ae"/>
+  <text x="380" y="254" text-anchor="middle" class="tb">④ Create</text>
+  <text x="380" y="270" text-anchor="middle" class="n">a writable layer, namespaces,</text>
+  <text x="380" y="284" text-anchor="middle" class="n">cgroup limits, the network,</text>
+  <text x="380" y="298" text-anchor="middle" class="n">ports (-p), volumes (-v)</text>
+
+  <!-- 5 -->
+  <rect x="300" y="326" width="160" height="44" rx="5" fill="#e6f4ec" stroke="#1d7a4b"/>
+  <text x="380" y="344" text-anchor="middle" class="tb">⑤ Start</text>
+  <text x="380" y="360" text-anchor="middle" class="n">the image's main program</text>
+
+  <!-- 6 -->
+  <line x1="380" y1="398" x2="125" y2="398" class="ln"/>
+  <text x="252" y="390" text-anchor="middle" class="t">⑥ the container's ID (with -d),</text>
+  <text x="252" y="412" text-anchor="middle" class="n">or its output, if you did not use -d</text>
+  <text x="472" y="398" class="n">Its output is also kept:</text>
+  <text x="472" y="411" class="n">docker logs</text>
+</svg>
+<figcaption>One <code>docker run</code>, step by step. Dashed lines are time moving down; each arrow is a message.</figcaption>
+</figure>
+
+<ol class="steps">
+  <li><b>The client asks the daemon.</b> <code>docker run</code> sends the request over a <b>socket</b>, a file-like connection named in <code>$DOCKER_HOST</code>. If no daemon answers, you get <i>Cannot connect to the Docker daemon</i>.</li>
+  <li><b>Find the image.</b> If the image is not on the machine yet, the daemon downloads it from a <b>registry</b>, layer by layer, skipping layers it already has. This happens once; the next <code>docker run</code> of the same image starts at once.</li>
+  <li><b>Create the container.</b> A writable layer on top of the image, its own namespaces, cgroup limits, a private network, and anything you asked for: published ports (<code>-p</code>), volumes (<code>-v</code>), settings (<code>-e</code>), a name (<code>--name</code>).</li>
+  <li><b>Start the main program.</b> Each image names one main program (its <code>CMD</code>). <b>The container lives exactly as long as that program does.</b> When it finishes or crashes, the container stops, shown as <code>Exited (code)</code> in <code>docker ps -a</code>. Exit code 0 means it finished normally; anything else, look at <code>docker logs</code>.</li>
+  <li><b>Detached or attached.</b> With <code>-d</code> the container runs in the background and you get your prompt back. Without it, your terminal shows the program's output until it stops. Either way, <code>docker logs NAME</code> shows everything it printed.</li>
+</ol>
+<p><code>docker stop</code> ends the main program; the container stays, stopped, and <code>docker start</code> runs it again with its writable layer intact. <code>docker rm</code> deletes the container and its writable layer. <code>docker run --rm</code> deletes it by itself when it stops.</p>
+
+<h2><span class="num">5</span>Ports: reaching a container</h2>
+<p>A container has its own private network. A program inside that listens on port 8080 is listening on the <i>container's</i> port 8080, which nothing outside can reach. <b>Publishing</b> a port connects a port on the server to a port in the container:</p>
+<pre>docker run -d -p <span class="out">127.0.0.1:10011</span>:<span class="in">8080</span> ...</pre>
+<p>The <span class="out">blue part</span> is on the server, the <span class="in">green part</span> inside the container: read it as <b>outside : inside</b>. <code>127.0.0.1</code> means the server accepts connections only from itself, so the port is not open to the internet. Leave it out and the port opens on every network address the server has.</p>
+
+<figure>
+<svg viewBox="0 0 760 175" role="img" aria-label="The path of a browser request: laptop, SSH tunnel, server port, container port">
+  <defs>
+    <marker id="p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1f5fbf"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: 'Liberation Sans','Helvetica Neue',Arial,sans-serif; fill: #1b1f24; }
+    .h  { font-size: 13.5px; font-weight: bold; }
+    .t  { font-size: 11.5px; }
+    .m  { font-family: 'DejaVu Sans Mono',Menlo,monospace; font-size: 11px; font-weight: bold; }
+    .n  { font-size: 10.5px; fill: #5b6470; }
+    .al { font-size: 10.5px; fill: #1f5fbf; font-weight: bold; }
+    .arr{ stroke: #1f5fbf; stroke-width: 2.2; marker-end: url(#p); }
+  </style>
+  <rect x="6" y="8" width="200" height="158" rx="8" fill="#fff" stroke="#9aa3ae" stroke-width="1.3"/>
+  <text x="20" y="30" class="h">Your laptop</text>
+  <rect x="18" y="58" width="176" height="62" rx="5" fill="#f3f5f8" stroke="#c4cad3"/>
+  <text x="30" y="80" class="t">Browser opens</text>
+  <text x="30" y="98" class="m">localhost:3000</text>
+  <text x="30" y="113" class="n">ssh -N -L 3000:...</text>
+
+  <rect x="320" y="8" width="434" height="158" rx="8" fill="#fff" stroke="#9aa3ae" stroke-width="1.3"/>
+  <text x="334" y="30" class="h">The class server</text>
+  <rect x="332" y="58" width="158" height="62" rx="5" fill="#e8f0fc" stroke="#1f5fbf"/>
+  <text x="344" y="80" class="t">Your port</text>
+  <text x="344" y="98" class="m">127.0.0.1:10011</text>
+  <text x="344" y="113" class="n">$((MYPORT+1))</text>
+  <rect x="582" y="46" width="160" height="108" rx="6" fill="#e6f4ec" stroke="#1d7a4b" stroke-width="1.2"/>
+  <text x="594" y="66" class="h" style="fill:#1d7a4b">Container</text>
+  <rect x="594" y="76" width="136" height="44" rx="5" fill="#fff" stroke="#1d7a4b"/>
+  <text x="604" y="94" class="t">Open WebUI</text>
+  <text x="604" y="111" class="m">listens on 8080</text>
+  <text x="594" y="142" class="n">its own private network</text>
+
+  <line x1="196" y1="89" x2="328" y2="89" class="arr"/>
+  <text x="262" y="72" text-anchor="middle" class="al">SSH tunnel</text>
+  <text x="262" y="110" text-anchor="middle" class="n">inside your SSH</text>
+  <text x="262" y="123" text-anchor="middle" class="n">connection, port 22</text>
+
+  <line x1="490" y1="98" x2="590" y2="98" class="arr"/>
+  <text x="536" y="84" text-anchor="middle" class="al">-p</text>
+  <text x="536" y="118" text-anchor="middle" class="n">10011 → 8080</text>
+</svg>
+<figcaption>Mission 3's request path. The tunnel brings your browser to the server; the published port brings it into the container.</figcaption>
+</figure>
+
+<ul>
+  <li><b>One port, one program.</b> Two containers cannot publish the same server port. On the class server everyone shares one machine, so each of you has ten ports of your own, <code>$MYPORT</code> to <code>$MYPORT+9</code>. Inside containers, ports never clash: every container has its own 8080.</li>
+  <li><b>The two numbers must match reality.</b> The inside number must be the port the program actually listens on. Publish the wrong one and the container runs, but nothing answers. <code>docker port NAME</code> shows what is published; the program's own log usually says where it listens.</li>
+  <li><code>EXPOSE 8080</code> in a Dockerfile is only a note for humans. It publishes nothing; <code>-p</code> does.</li>
+</ul>
+
+<h2><span class="num">6</span>Keeping data: volumes and bind mounts</h2>
+<p>Treat containers as disposable: you delete them and make new ones all the time, to upgrade an image or change a setting. Whatever a container wrote into its writable layer goes with it. Data that must survive goes somewhere else, <b>mounted</b> into the container at a path you choose:</p>
+<table class="vol">
+  <thead><tr><th></th><th>Named volume</th><th>Bind mount</th></tr></thead>
+  <tbody>
+  <tr><td>Looks like</td><td><code>-v openwebui-data:/app/backend/data</code></td><td><code>-v ~/s2/site:/usr/share/nginx/html</code></td></tr>
+  <tr><td>What it is</td><td>Storage that Docker manages, under a name</td><td>A folder of yours, shown inside the container</td></tr>
+  <tr><td>Use it for</td><td>An app's own data: databases, accounts, chats</td><td>Files you edit yourself: code, a web page, config</td></tr>
+  <tr><td>Lives until</td><td><code>docker volume rm</code>; deleting containers leaves it</td><td>You delete the folder</td></tr>
+  <tr><td>See it with</td><td><code>docker volume ls</code></td><td><code>ls</code>, on the server</td></tr>
+  </tbody>
+</table>
+<p>The rule for <code>-v</code>: if the left side starts with <code>/</code> or <code>~</code> (or <code>./</code>), it is a folder; otherwise it is a volume name. The right side is always the path inside the container. Both are the same file, not a copy: change it on one side and the other sees it at once.</p>
+<p><b>Settings</b> go in as environment variables: <code>-e TZ=Asia/Yerevan</code>. <b>Secrets</b> such as API keys never go into an image, a Dockerfile or a <code>compose.yml</code>: those get shared and committed to git. Type them into the app, or keep them in a <code>.env</code> file that git ignores.</p>
+
+<h2><span class="num">7</span>Building your own image: the Dockerfile</h2>
+<p>A <b>Dockerfile</b> is the recipe for an image: a starting image, then steps. Each step adds a layer.</p>
+<pre>FROM python:3.12-slim                  <span class="c"># start from an existing image</span>
+WORKDIR /app                           <span class="c"># the folder later steps work in</span>
+COPY requirements.txt .                <span class="c"># copy a file from your folder into the image</span>
+RUN pip install -r requirements.txt    <span class="c"># run a command while building</span>
+COPY . .                               <span class="c"># copy the rest of your code</span>
+ENV PORT=8000                          <span class="c"># a default setting</span>
+EXPOSE 8000                            <span class="c"># a note: the app listens here</span>
+CMD ["python", "main.py"]              <span class="c"># the main program, run when a container starts</span></pre>
+<pre>docker build -t myapp .                <span class="c"># build an image called myapp from the Dockerfile here</span>
+docker run -d --name app -p 127.0.0.1:$MYPORT:8000 myapp</pre>
+<ul>
+  <li><b>Build time and run time.</b> <code>RUN</code> happens once, while building. <code>CMD</code> happens every time a container starts. A mistake in the first shows up in <code>docker build</code>; a mistake in the second shows up in <code>docker logs</code>.</li>
+  <li><b>The dot</b> at the end of <code>docker build</code> is the <b>build context</b>: the folder whose files <code>COPY</code> can see. <code>COPY</code> can only copy files that exist there, under exactly that name.</li>
+  <li><b>The cache.</b> Docker reuses every layer up to the first step that changed. That is why the slow <code>pip install</code> comes before <code>COPY . .</code>: editing your code then rebuilds in a second.</li>
+  <li><b>Changing code means rebuilding.</b> A container runs the image it was made from. After editing code: <code>docker build</code> again, remove the old container, run a new one.</li>
+</ul>
+
+<h2><span class="num">8</span>Compose: the whole setup in one file</h2>
+<p>A long <code>docker run</code> command is easy to mistype and hard to remember. <b>Docker Compose</b> writes the same thing down in <code>compose.yml</code>, so that anyone can start it with one command. An example:</p>
+<pre>services:
+  web:                                 <span class="c"># the service's name</span>
+    image: nginx:1.27-alpine
+    ports:
+      - "127.0.0.1:${PORT}:80"         <span class="c"># PORT comes from the file .env</span>
+    volumes:
+      - ./site:/usr/share/nginx/html   <span class="c"># a bind mount</span>
+    restart: unless-stopped            <span class="c"># come back after a crash or a restart</span></pre>
+<table class="keep cmds">
+  <thead><tr><th>Command (in the folder with <code>compose.yml</code>)</th><th>What it does</th></tr></thead>
+  <tbody>
+  <tr><td><code>docker compose up -d</code></td><td>Create and start everything, in the background. Run it again after editing the file: it changes only what changed.</td></tr>
+  <tr><td><code>docker compose ps</code> / <code>logs -f</code></td><td>Status, and output, of this file's containers</td></tr>
+  <tr><td><code>docker compose down</code></td><td>Stop and delete the containers. Named volumes stay, unless you add <code>-v</code>.</td></tr>
+  </tbody>
+</table>
+<p><b>Restart policies</b> say what happens when the main program stops or Docker itself restarts: <code>no</code> (the default: stay stopped), <code>on-failure</code> (restart after a crash), <code>always</code>, and <code>unless-stopped</code> (always, unless you stopped it yourself). A service that should just be there, like your Open WebUI, uses <code>unless-stopped</code>.</p>
+
+<h2><span class="num">9</span>Docker on our class server</h2>
+<p>On most servers there is one Docker daemon, running as root, shared by everyone. That is unsafe on a shared machine: <b>whoever can use that daemon can become root</b>, for example by mounting the server's whole disk into a container. So the class server gives each of you <b>your own daemon, running as you</b>. This is called <b>rootless Docker</b>.</p>
+
+<figure>
+<svg viewBox="0 0 760 196" role="img" aria-label="The class server: each student has their own Docker daemon, containers, ports and limits">
+  <style>
+    text { font-family: 'Liberation Sans','Helvetica Neue',Arial,sans-serif; fill: #1b1f24; }
+    .h  { font-size: 13.5px; font-weight: bold; }
+    .tb { font-size: 12px; font-weight: bold; }
+    .t  { font-size: 11px; }
+    .n  { font-size: 10.5px; fill: #5b6470; }
+    .m  { font-family: 'DejaVu Sans Mono',Menlo,monospace; font-size: 10px; fill: #5b6470; }
+  </style>
+  <rect x="4" y="4" width="752" height="188" rx="8" fill="#fff" stroke="#9aa3ae" stroke-width="1.3"/>
+  <text x="18" y="26" class="h">The class server: one Linux kernel</text>
+  <text x="742" y="26" text-anchor="end" class="n">only port 22 is open to the internet</text>
+
+  <g>
+    <rect x="16" y="38" width="236" height="144" rx="6" fill="#e8f0fc" stroke="#1f5fbf"/>
+    <text x="28" y="57" class="tb">ani</text><text x="240" y="57" text-anchor="end" class="m">ports 10010-10019</text>
+    <rect x="28" y="66" width="212" height="24" rx="4" fill="#fff" stroke="#1f5fbf"/><text x="38" y="82" class="t">ani's own dockerd</text>
+    <rect x="28" y="96" width="102" height="34" rx="4" fill="#e6f4ec" stroke="#1d7a4b"/><text x="79" y="117" text-anchor="middle" class="t">openwebui</text>
+    <rect x="138" y="96" width="102" height="34" rx="4" fill="#e6f4ec" stroke="#1d7a4b"/><text x="189" y="117" text-anchor="middle" class="t">site</text>
+    <text x="28" y="150" class="n">images and volumes in /home/ani</text>
+    <text x="28" y="166" class="n">all of it within 3 GB · 2 CPUs</text>
+  </g>
+  <g>
+    <rect x="262" y="38" width="236" height="144" rx="6" fill="#e8f0fc" stroke="#1f5fbf"/>
+    <text x="274" y="57" class="tb">davit</text><text x="486" y="57" text-anchor="end" class="m">ports 10020-10029</text>
+    <rect x="274" y="66" width="212" height="24" rx="4" fill="#fff" stroke="#1f5fbf"/><text x="284" y="82" class="t">davit's own dockerd</text>
+    <rect x="274" y="96" width="102" height="34" rx="4" fill="#e6f4ec" stroke="#1d7a4b"/><text x="325" y="117" text-anchor="middle" class="t">openwebui</text>
+    <text x="274" y="150" class="n">images and volumes in /home/davit</text>
+    <text x="274" y="166" class="n">all of it within 3 GB · 2 CPUs</text>
+  </g>
+  <g>
+    <rect x="508" y="38" width="236" height="144" rx="6" fill="#f3f5f8" stroke="#9aa3ae" stroke-dasharray="5 4"/>
+    <text x="626" y="104" text-anchor="middle" class="tb" style="fill:#5b6470">... one box like this</text>
+    <text x="626" y="121" text-anchor="middle" class="tb" style="fill:#5b6470">for every student</text>
+  </g>
+</svg>
+<figcaption>The ports and names are examples. <code>echo $MYPORT</code> shows your first port.</figcaption>
+</figure>
+<ul>
+  <li><code>docker ps</code> shows <b>only your</b> containers and <code>docker images</code> only your images. Two students can both have a container called <code>openwebui</code>.</li>
+  <li>You need no <code>sudo</code>. Root <i>inside</i> your containers is only your own user outside them.</li>
+  <li>Your containers count against <b>your</b> limits: 3 GB of memory and 2 CPUs for everything you run.</li>
+  <li><code>$DOCKER_HOST</code> points at your daemon's socket, <code>/run/user/&lt;your id&gt;/docker.sock</code>. If your daemon is not running: <code>systemctl --user start docker</code>.</li>
+  <li><b>Ports are the one thing you share.</b> They all belong to the same server, so use only your own ten. <code>127.0.0.1</code> hides a port from the internet, but not from other users on the same server: that is why mission 3 has you create your Open WebUI account at once.</li>
+</ul>
+
+<h2><span class="num">10</span>Commands you will use</h2>
+<table class="cmds">
+  <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+  <tbody>
+  <tr><td><code>docker run -d --name web IMAGE</code></td><td>Make and start a container in the background. Add <code>-p</code>, <code>-v</code>, <code>-e</code> as needed</td></tr>
+  <tr><td><code>docker run --rm -it IMAGE sh</code></td><td>A throwaway container with a shell inside; deleted when you exit</td></tr>
+  <tr><td><code>docker ps</code> / <code>docker ps -a</code></td><td>Running containers / all containers, stopped ones too</td></tr>
+  <tr><td><code>docker logs -f web</code></td><td>What the container printed; <code>-f</code> keeps following (Ctrl+C stops following, not the container)</td></tr>
+  <tr><td><code>docker exec -it web sh</code></td><td>A shell inside a running container. <code>exit</code> leaves it</td></tr>
+  <tr><td><code>docker stop web</code> / <code>docker start web</code></td><td>Stop the main program / start it again</td></tr>
+  <tr><td><code>docker rm web</code> / <code>docker rm -f web</code></td><td>Delete a stopped container / stop and delete it</td></tr>
+  <tr><td><code>docker port web</code></td><td>Which server port goes to which container port</td></tr>
+  <tr><td><code>docker images</code> / <code>docker pull IMAGE</code></td><td>Your images / download one</td></tr>
+  <tr><td><code>docker build -t NAME .</code></td><td>Build an image from the Dockerfile in this folder</td></tr>
+  <tr><td><code>docker volume ls</code> / <code>docker volume rm NAME</code></td><td>Your volumes / delete one, with its data</td></tr>
+  <tr><td><code>docker inspect web</code></td><td>Everything about a container, as JSON</td></tr>
+  <tr><td><code>docker system df</code></td><td>How much disk your images, containers and volumes use</td></tr>
+  </tbody>
+</table>
+
+<h2><span class="num">11</span>When it goes wrong</h2>
+<table>
+  <thead><tr><th>You see</th><th>What it means and what to do</th></tr></thead>
+  <tbody>
+  <tr><td><code>Cannot connect to the Docker daemon</code></td><td>No daemon is answering. On the class server: <code>systemctl --user start docker</code>, wait a few seconds, try again. On a laptop: start Docker Desktop.</td></tr>
+  <tr><td><code>Conflict. The container name "/web" is already in use</code></td><td>A container with that name exists, perhaps stopped. <code>docker ps -a</code> shows it; <code>docker rm -f web</code> deletes it, or pick another name.</td></tr>
+  <tr><td><code>port is already allocated</code> or <code>address already in use</code></td><td>Something already uses that server port: one of your own containers (<code>docker ps</code>) or someone else's. Use a free port from your own range.</td></tr>
+  <tr><td>The container shows <code>Exited (1)</code> right after starting</td><td>Its main program crashed, so the container stopped. <code>docker logs NAME</code> shows the program's last words, usually the reason.</td></tr>
+  <tr><td><code>Exited (137)</code></td><td>The program was killed, most often for using more memory than its limit.</td></tr>
+  <tr><td><code>curl</code> says <code>Connection refused</code>, or the connection is reset</td><td>Nothing answers at that address. Is the container running (<code>docker ps</code>)? Does <code>docker port NAME</code> point to the port the program really listens on? Did you use your own port number?</td></tr>
+  <tr><td><code>pull access denied</code> or <code>manifest unknown</code></td><td>The image's name or tag is misspelled, or that tag does not exist.</td></tr>
+  <tr><td>Your code change does not show up</td><td>The container still runs the old image. Rebuild, remove the container, run it again.</td></tr>
+  <tr><td>The app starts empty: your data is gone</td><td>The new container is not using the old volume. Check the volume's name after <code>-v</code> (or in <code>compose.yml</code>) and <code>docker volume ls</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2><span class="num">12</span>Try it yourself <span style="font-weight:normal;color:#5b6470;font-size:10pt">(5 minutes, on the class server)</span></h2>
+<ol>
+  <li><b>Another system, the same kernel.</b> Compare the server with a container:
+<pre>cat /etc/os-release | head -1;  uname -r
+docker run --rm python:3.12-slim sh -c 'head -1 /etc/os-release; uname -r'</pre>
+    The server runs Ubuntu, the container Debian, yet <code>uname -r</code>, the kernel's version, is the same. Which row of the table in section 3 does this show?</li>
+  <li><b>A world of its own.</b> <code>docker run --rm python:3.12-slim python -c "import os; print(os.getpid(), os.uname().nodename)"</code>. The program is process number 1, and its hostname is not the server's: namespaces.</li>
+  <li><b>Layers.</b> <code>docker history nginx:1.27-alpine</code> lists the steps that built the image, with each layer's size.</li>
+  <li><b>A cgroup limit.</b> Give a container 100 MB and ask for 300 MB:
+<pre>docker run --rm -m 100m python:3.12-slim python -c "x = bytearray(300_000_000)"; echo "exit code: $?"</pre>
+    It is killed, with exit code 137. You are under the same kind of limit, only bigger.</li>
+  <li><b>Think:</b> why is it safe to delete a container, but not a volume?</li>
+</ol>
+
+<h2><span class="num">13</span>Words to know</h2>
+<dl>
+  <dt>Image</dt><dd>A packaged program and its environment, in read-only layers.</dd>
+  <dt>Container</dt><dd>A running (or stopped) copy of an image: a fenced-off process.</dd>
+  <dt>Layer</dt><dd>One step's worth of files in an image. Shared and cached.</dd>
+  <dt>Registry</dt><dd>A server that stores images: Docker Hub, <code>ghcr.io</code>.</dd>
+  <dt>Tag</dt><dd>The version part of an image's name, after the colon.</dd>
+  <dt>Dockerfile</dt><dd>The recipe that builds an image.</dd>
+  <dt>Build context</dt><dd>The folder <code>docker build</code> can copy files from.</dd>
+  <dt>Daemon</dt><dd><code>dockerd</code>: the background program that runs containers.</dd>
+  <dt>Publish a port</dt><dd>Connect a server port to a container port: <code>-p outside:inside</code>.</dd>
+  <dt>Volume</dt><dd>Docker-managed storage that outlives containers.</dd>
+  <dt>Bind mount</dt><dd>A folder of yours, shown inside a container.</dd>
+  <dt>Compose</dt><dd>A container setup written in <code>compose.yml</code>, run with one command.</dd>
+  <dt>Restart policy</dt><dd>What Docker does when a container's program stops.</dd>
+  <dt>Namespace</dt><dd>A kernel fence for what a process can see.</dd>
+  <dt>Cgroup</dt><dd>A kernel limit on what a process can use.</dd>
+  <dt>Rootless Docker</dt><dd>A Docker daemon that runs as an ordinary user, not root.</dd>
+</dl>
+
+</body>
+</html>

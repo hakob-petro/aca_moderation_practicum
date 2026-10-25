@@ -81,6 +81,11 @@ explain an error, but not to do the mission.
 Anything you did not finish, finish at home before the next session: each
 mission's `./check` still works.
 
+**Want to know how Docker really works?** Read
+[How Docker works](../materials/seminar_2/how_docker_works.pdf): images and
+containers, what happens when you type `docker run`, ports, volumes, Compose,
+and how Docker works on the class server.
+
 **Homework, at home:** [Broken on purpose](homework/broken.md). An app with
 three bugs, found and fixed from what Docker tells you. `./check broken` checks
 it.

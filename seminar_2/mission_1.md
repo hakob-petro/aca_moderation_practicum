@@ -5,6 +5,9 @@
 An **image** is a packaged program with everything it needs. A **container** is
 that image running. Today's first one is a web server, nginx.
 
+**What is a container, really?** Read
+[How Docker works](../materials/seminar_2/how_docker_works.pdf), sections 2–4.
+
 ---
 
 ## Steps
