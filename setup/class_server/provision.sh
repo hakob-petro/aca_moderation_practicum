@@ -95,17 +95,21 @@ if [ "${1:-}" = "--key" ]; then
   user="${3:?Usage: class-add-student --key \"PUBLIC KEY\" SERVER_USERNAME}"
   gh="-"
   case "$key" in ssh-*|ecdsa-*|sk-*) ;; *) echo "That does not look like a public key: $key" >&2; exit 1 ;; esac
+  # Keep the username exactly as given (dots and capitals too): it is what the
+  # student already has after User in ~/.ssh/config.
+  printf '%s' "$user" | grep -Eq '^[A-Za-z_][A-Za-z0-9._-]{0,31}$' \
+    || { echo "Not a valid username: $user (letters, digits, . _ -, at most 32)" >&2; exit 1; }
 else
   gh="${1:?Usage: class-add-student GITHUB_USERNAME [SERVER_USERNAME], or --key \"PUBLIC KEY\" SERVER_USERNAME}"
-  user="${2:-$(printf '%s' "$gh" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_-' '_')}"
+  user="${2:-$gh}"
+  user=$(printf '%s' "$user" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_-' '_')
+  case "$user" in [a-z_]*) ;; *) user="u$user" ;; esac
+  user="${user:0:32}"
 fi
-user=$(printf '%s' "$user" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_-' '_')
-case "$user" in [a-z_]*) ;; *) user="u$user" ;; esac
-user="${user:0:32}"
 
 id "$user" >/dev/null 2>&1 || useradd -m -s /bin/bash "$user"
 chmod 750 "/home/$user"
-grep -q "^$user " /etc/class/students || echo "$user $gh" >> /etc/class/students
+awk -v u="$user" '$1 == u {found=1} END {exit !found}' /etc/class/students || echo "$user $gh" >> /etc/class/students
 
 if [ -n "$key" ]; then
   install -d -m 700 -o "$user" -g "$user" "/home/$user/.ssh"

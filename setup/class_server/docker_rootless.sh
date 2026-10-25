@@ -61,7 +61,8 @@ home="/home/$user"
 sock="/run/user/$uid/docker.sock"
 log="$home/.docker-setup.log"
 
-if ! grep -q "^$user:" /etc/subuid || ! grep -q "^$user:" /etc/subgid; then
+has_range() { awk -F: -v u="$user" '$1 == u {found=1} END {exit !found}' "$1"; }
+if ! has_range /etc/subuid || ! has_range /etc/subgid; then
   echo "$user: no /etc/subuid or /etc/subgid entry; rootless Docker needs one" >&2
   exit 1
 fi
