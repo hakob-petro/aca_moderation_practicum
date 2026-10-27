@@ -1,0 +1,22 @@
+# Mission 2: answers about ~/course/data/train.csv. Write each answer after its = sign.
+
+# 1. How many comments are there for each rule?
+comments_advertising =
+comments_legal =
+
+# 2. What percentage of each rule's comments break the rule (rule_violation = 1)?
+break_percent_advertising =
+break_percent_legal =
+
+# 3. Every row has five texts: body and the four example columns.
+#    How many texts are there in all, and how many different ones?
+text_slots =
+unique_texts =
+
+# 4. Group the rows by (body, rule). How many groups have both labels, 0 and 1?
+conflicting_pairs =
+
+# 5. Three rows whose label you think is wrong: the row_id, then | and why.
+wrong_label_1 =
+wrong_label_2 =
+wrong_label_3 =

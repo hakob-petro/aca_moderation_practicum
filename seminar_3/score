@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Scores comments with the model, on a GPU.
+#
+#   ./score --comment "Buy followers cheap at example.com"
+#   ./score --comment "Can my landlord keep my deposit?" --rule legal
+#   ./score --comment "..." --show-prompt
+#   ./score --file ~/s3/my_comments.txt
+#   ./score --dev
+#
+# On a machine with its own GPU it runs score.py here; anywhere else it runs
+# modal_score.py on a Modal GPU. Both do the same thing: see scorer.py.
+set -euo pipefail
+here="$(cd "$(dirname "$0")" && pwd)"
+
+if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then
+  exec uv run --quiet "$here/score.py" "$@"
+fi
+
+if ! command -v modal >/dev/null 2>&1; then
+  echo "This machine has no GPU, and the modal command is not installed." >&2
+  echo "Do mission 1 first." >&2
+  exit 1
+fi
+exec modal run "$here/modal_score.py" "$@"

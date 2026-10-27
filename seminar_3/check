@@ -1,0 +1,271 @@
+#!/usr/bin/env bash
+# Seminar 3 checks.   Usage:  ./check 1   (or 2, 3, 4)
+set -uo pipefail
+here="$(cd "$(dirname "$0")" && pwd)"
+S3="$HOME/s3"
+export PATH="$HOME/.local/bin:$PATH"
+
+pass=0; fail=0
+ok()   { printf 'PASS  %s\n' "$1"; pass=$((pass + 1)); }
+bad()  { printf 'FAIL  %s\n' "$1"; fail=$((fail + 1)); [ -n "${2:-}" ] && printf '      -> %s\n' "$2"; }
+
+get() {
+  [ -f "$1" ] || return 0
+  sed -n "s/^[[:space:]]*$2[[:space:]]*=[[:space:]]*//p" "$1" | head -n 1 | tr -d '\r' | sed 's/[[:space:]]*$//'
+}
+
+# The Python checks print lines "PASS<tab>text" or "FAIL<tab>text<tab>hint" into $tmp.
+tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT
+report() {
+  while IFS=$'\t' read -r status text hint; do
+    if [ "$status" = PASS ]; then ok "$text"; elif [ "$status" = FAIL ]; then bad "$text" "$hint"; else printf '%s\n' "$status"; fi
+  done
+}
+
+check1() {
+  local f="$S3/hello.txt" where gpu
+  if command -v uv >/dev/null 2>&1; then ok "uv is installed"
+  else bad "uv is not installed" "curl -LsSf https://astral.sh/uv/install.sh | sh, then: source ~/.local/bin/env"; fi
+
+  if [ ! -f "$f" ]; then
+    bad "no ~/s3/hello.txt yet" "follow mission 1 to the end: the last step brings hello.txt to ~/s3"
+    return
+  fi
+  where=$(get "$f" ran_on); gpu=$(get "$f" gpu)
+  if printf '%s' "$gpu" | grep -qiE 'nvidia|tesla'; then ok "your code ran on a GPU: $gpu"
+  else bad "hello.txt names no GPU (${gpu:-empty})" "run the hello script again and copy its file, do not write it yourself"; fi
+
+  if [ "$where" = "Modal" ]; then
+    if ! command -v modal >/dev/null 2>&1; then
+      bad "the modal command is not installed" "uv tool install modal"
+    elif modal volume ls aca-models 2>/dev/null | grep -q 'hello.txt'; then
+      ok "hello.txt is in your Modal volume aca-models, and you brought it back"
+    else
+      bad "hello.txt is not in your Modal volume aca-models" "modal run hello_modal.py, then modal volume get aca-models hello.txt ~/s3/hello.txt"
+    fi
+  elif [ "$where" = "this machine" ]; then
+    if nvidia-smi -L >/dev/null 2>&1; then ok "nvidia-smi sees this machine's GPU"
+    else bad "nvidia-smi does not work on this machine" "are you on your GPU server? ssh gpu"; fi
+  else
+    bad "hello.txt does not say where it ran" "run the hello script again: do not write hello.txt yourself"
+  fi
+}
+
+check2() {
+  if [ -f "$S3/data/dev.jsonl" ] && [ -f "$S3/data/train.jsonl" ]; then ok "the split exists: ~/s3/data/train.jsonl and dev.jsonl"
+  else bad "no split in ~/s3/data yet" "cd ~/course/seminar_3 && python3 prepare_data.py"; fi
+
+  if [ ! -f "$S3/m2.txt" ]; then
+    bad "answers file ~/s3/m2.txt" "cp ~/course/seminar_3/templates/m2.txt ~/s3/m2.txt && nano ~/s3/m2.txt"
+    return
+  fi
+  python3 - "$here/../data/train.csv" "$S3/m2.txt" "$S3/data" <<'PY' >"$tmp"
+import csv, json, re, sys
+from collections import defaultdict
+from pathlib import Path
+
+rows = list(csv.DictReader(open(sys.argv[1], newline="", encoding="utf-8")))
+answers = {}
+for line in open(sys.argv[2], encoding="utf-8"):
+    if "=" in line and not line.lstrip().startswith("#"):
+        k, v = line.split("=", 1)
+        answers[k.strip()] = v.strip()
+
+def number(key):
+    m = re.search(r"-?\d+(\.\d+)?", answers.get(key, ""))
+    return float(m.group()) if m else None
+
+def say(ok, text, hint=""):
+    print(f"{'PASS' if ok else 'FAIL'}\t{text}\t{hint}")
+
+ad = [r for r in rows if r["rule"].startswith("No Advertising")]
+legal = [r for r in rows if r["rule"].startswith("No legal")]
+slots = [r[k] for r in rows for k in ("body", "positive_example_1", "positive_example_2", "negative_example_1", "negative_example_2")]
+labels = defaultdict(set)
+for r in rows:
+    labels[(r["body"], r["rule"])].add(r["rule_violation"])
+want = {
+    "comments_advertising": (len(ad), 0),
+    "comments_legal": (len(legal), 0),
+    "break_percent_advertising": (100 * sum(r["rule_violation"] == "1" for r in ad) / len(ad), 1),
+    "break_percent_legal": (100 * sum(r["rule_violation"] == "1" for r in legal) / len(legal), 1),
+    "text_slots": (len(slots), 0),
+    "unique_texts": (len(set(slots)), 0),
+    "conflicting_pairs": (sum(len(v) > 1 for v in labels.values()), 0),
+}
+hints = {
+    "comments_advertising": "count the rows of train.csv with each rule",
+    "comments_legal": "count the rows of train.csv with each rule",
+    "break_percent_advertising": "of that rule's rows, the share with rule_violation = 1, as a percentage",
+    "break_percent_legal": "of that rule's rows, the share with rule_violation = 1, as a percentage",
+    "text_slots": "every row has five text columns: body and the four examples. How many texts in all?",
+    "unique_texts": "the same texts, counted once each",
+    "conflicting_pairs": "group the rows by (body, rule): how many groups contain both a 0 and a 1?",
+}
+for key, (value, tolerance) in want.items():
+    got = number(key)
+    say(got is not None and abs(got - value) <= tolerance + 1e-9, f"{key}: {answers.get(key) or 'empty'}", hints[key])
+
+ids = {r["row_id"]: r for r in rows}
+seen = set()
+for i in (1, 2, 3):
+    key = f"wrong_label_{i}"
+    raw = answers.get(key, "")
+    row_id, _, why = (part.strip() for part in raw.partition("|"))
+    good = row_id in ids and row_id not in seen and len(why) >= 15
+    seen.add(row_id)
+    say(good, f"{key}: {raw[:60] or 'empty'}", "a row_id from train.csv, then | and a sentence on why its label looks wrong")
+PY
+  report <"$tmp"
+}
+
+check3() {
+  if [ ! -f "$S3/m3.txt" ]; then
+    bad "answers file ~/s3/m3.txt" "cp ~/course/seminar_3/templates/m3.txt ~/s3/m3.txt && nano ~/s3/m3.txt"
+  else
+    python3 - "$S3/m3.txt" <<'PY' >"$tmp"
+import re, sys
+answers = {}
+for line in open(sys.argv[1], encoding="utf-8"):
+    if "=" in line and not line.lstrip().startswith("#"):
+        k, v = line.split("=", 1)
+        answers[k.strip()] = v.strip()
+
+def say(ok, text, hint=""):
+    print(f"{'PASS' if ok else 'FAIL'}\t{text}\t{hint}")
+
+def numbers(key):
+    return [float(x) for x in re.findall(r"\d+(?:\.\d+)?", answers.get(key, ""))]
+
+# The values for Qwen3-0.6B and the prompt in scorer.py (see the instructor's solution).
+for key, want, hint in [
+    ("tokens_in_sentence", [11], "step 2: len(tok.encode(...)), or count the tokens tok.tokenize printed"),
+    ("yes_id", [9454], 'step 2: tok.encode("Yes")'),
+    ("space_yes_id", [7414], 'step 2: tok.encode(" Yes"), with the space'),
+    ("no_id", [2753], 'step 2: tok.encode("No")'),
+    ("logits_shape", [1, 159, 151936], "step 4: logits.shape, all three numbers"),
+]:
+    say(numbers(key) == want, f"{key}: {answers.get(key) or 'empty'}", hint)
+p = numbers("p_yes_landlord")
+say(len(p) == 1 and abs(p[0] - 0.95) <= 0.03, f"p_yes_landlord: {answers.get('p_yes_landlord') or 'empty'}",
+    "step 6: score = last[yes_id] - last[no_id], then torch.sigmoid(score); a number between 0 and 1")
+PY
+    report <"$tmp"
+  fi
+
+  if [ ! -f "$S3/my_comments.txt" ]; then
+    bad "no ~/s3/my_comments.txt yet" "cp ~/course/seminar_3/templates/my_comments.txt ~/s3/ && nano ~/s3/my_comments.txt"
+    return
+  fi
+  if [ ! -f "$S3/my_scores.tsv" ]; then
+    bad "no ~/s3/my_scores.tsv yet" "./score --file ~/s3/my_comments.txt"
+    return
+  fi
+  if [ "$S3/my_comments.txt" -nt "$S3/my_scores.tsv" ]; then
+    bad "you changed my_comments.txt after scoring it" "./score --file ~/s3/my_comments.txt"
+  fi
+  python3 - "$here/../data/train.csv" "$S3/my_scores.tsv" "$here/templates/my_comments.txt" <<'PY' >"$tmp"
+import csv, sys
+data = {" ".join(r["body"].lower().split()) for r in csv.DictReader(open(sys.argv[1], newline="", encoding="utf-8"))}
+template = {" ".join(line.split("|", 1)[1].lower().split()) for line in open(sys.argv[3], encoding="utf-8") if "|" in line}
+rows = list(csv.DictReader(open(sys.argv[2], encoding="utf-8"), delimiter="\t"))
+def say(ok, text, hint=""):
+    print(f"{'PASS' if ok else 'FAIL'}\t{text}\t{hint}")
+own = [r for r in rows if " ".join(r["comment"].lower().split()) not in data | template]
+say(len(own) >= 5, f"{len(own)} comments of your own scored", "at least 5, written by you: not copied from the data or the template's examples")
+rules = {r["rule"].strip().lower() for r in own}
+say({"advertising", "legal"} <= rules, "both rules tried", "at least one comment for advertising and one for legal")
+try:
+    ok = all(0 <= float(r["p_yes"]) <= 1 for r in rows)
+except ValueError:
+    ok = False
+say(ok and len(rows) > 0, "every comment has a probability", "./score --file ~/s3/my_comments.txt writes the file: do not edit it")
+PY
+  report <"$tmp"
+}
+
+check4() {
+  local f="$S3/baseline.json"
+  if [ ! -f "$S3/data/dev.jsonl" ]; then bad "no dev split yet" "cd ~/course/seminar_3 && python3 prepare_data.py"; return; fi
+  if [ ! -f "$f" ] || [ ! -f "$S3/baseline_predictions.csv" ]; then bad "no baseline yet" "cd ~/course/seminar_3 && ./score --dev"; return; fi
+  python3 - "$here" "$S3" <<'PY' >"$tmp"
+import csv, json, sys
+from pathlib import Path
+here, s3 = Path(sys.argv[1]), Path(sys.argv[2])
+sys.path.insert(0, str(here))
+from auc import column_averaged_auc
+
+def say(ok, text, hint=""):
+    print(f"{'PASS' if ok else 'FAIL'}\t{text}\t{hint}")
+
+dev = {r["row_id"]: r for r in (json.loads(line) for line in open(s3 / "data" / "dev.jsonl", encoding="utf-8"))}
+summary = json.loads((s3 / "baseline.json").read_text())
+preds = list(csv.DictReader(open(s3 / "baseline_predictions.csv", encoding="utf-8")))
+rerun = "cd ~/course/seminar_3 && ./score --dev"
+
+same = len(preds) == len(dev) and all(int(p["row_id"]) in dev and int(p["label"]) == dev[int(p["row_id"])]["rule_violation"] for p in preds)
+say(same, f"every one of the {len(dev)} dev comments is scored", rerun)
+if same:
+    mean, _ = column_averaged_auc(preds)
+    say(abs(mean - summary.get("auc", -1)) < 0.001, f"baseline.json's AUC matches the predictions: {mean:.3f}", rerun)
+    print(f"      Your baseline AUC: {mean:.3f}  ({summary.get('ran_on', '?')}). Write it on the board.")
+
+answers = {}
+m4 = s3 / "m4.txt"
+if m4.exists():
+    for line in m4.open(encoding="utf-8"):
+        if "=" in line and not line.lstrip().startswith("#"):
+            k, v = line.split("=", 1)
+            answers[k.strip()] = v.strip()
+try:
+    by_hand = float(answers.get("auc_by_hand", "").replace(",", "."))
+except ValueError:
+    by_hand = None
+say(by_hand is not None and abs(by_hand - 5 / 6) < 0.01, f"auc_by_hand: {answers.get('auc_by_hand') or 'empty'}",
+    "in ~/s3/m4.txt (copy it from ~/course/seminar_3/templates): count the (breaking, clean) pairs, and those where the breaking one scores higher")
+PY
+  report <"$tmp"
+}
+
+check_frontier() {
+  if [ ! -f "$S3/data/dev.jsonl" ]; then bad "no dev split yet" "cd ~/course/seminar_3 && python3 prepare_data.py"; return; fi
+  if [ ! -f "$S3/frontier.json" ] || [ ! -f "$S3/frontier_predictions.csv" ]; then
+    bad "no frontier baseline yet" "follow homework/frontier.md: python3 frontier.py --model THE_MODEL_NAME"
+    return
+  fi
+  python3 - "$here" "$S3" <<'PY' >"$tmp"
+import csv, json, sys
+from pathlib import Path
+here, s3 = Path(sys.argv[1]), Path(sys.argv[2])
+sys.path.insert(0, str(here))
+from auc import column_averaged_auc
+
+def say(ok, text, hint=""):
+    print(f"{'PASS' if ok else 'FAIL'}\t{text}\t{hint}")
+
+dev = {r["row_id"]: r for r in (json.loads(line) for line in open(s3 / "data" / "dev.jsonl", encoding="utf-8"))}
+summary = json.loads((s3 / "frontier.json").read_text())
+preds = list(csv.DictReader(open(s3 / "frontier_predictions.csv", encoding="utf-8")))
+same = len(preds) == 100 and all(int(p["row_id"]) in dev and int(p["label"]) == dev[int(p["row_id"])]["rule_violation"] for p in preds)
+say(same, "100 dev comments scored by a frontier model", "run python3 frontier.py --model ... again")
+if same:
+    mean, _ = column_averaged_auc(preds)
+    say(abs(mean - summary.get("auc", -1)) < 0.001, f"frontier.json's AUC matches the predictions: {mean:.3f}", "run python3 frontier.py again")
+    say(summary.get("unreadable_answers", 100) <= 10, f"{summary.get('unreadable_answers')} answers without a number", "at most 10 are allowed: try another model")
+    print(f"      {summary.get('model')}: AUC {mean:.3f}")
+PY
+  report <"$tmp"
+}
+
+case "${1:-}" in
+  1) check1 ;;
+  2) check2 ;;
+  3) check3 ;;
+  4) check4 ;;
+  frontier) check_frontier ;;
+  *) echo "Usage: ./check N   (N = 1, 2, 3 or 4; or: ./check frontier, for the homework)"; exit 2 ;;
+esac
+
+echo
+if [ "$fail" -eq 0 ]; then echo "MISSION $1: ALL $pass PASSED. Colour your cell on the board."
+else echo "MISSION $1: $fail to fix. Follow the arrows above, then run ./check $1 again."; exit 1; fi

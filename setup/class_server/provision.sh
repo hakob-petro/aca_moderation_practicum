@@ -149,7 +149,61 @@ while read -r user gh; do
 done < /etc/class/students
 EOF
 
-chmod 755 /usr/local/sbin/class-sync-keys /usr/local/sbin/class-add-student /usr/local/sbin/class-list
+cat > /usr/local/sbin/class-modal-token <<'EOF'
+#!/usr/bin/env bash
+# Gives a student without a card the class's Modal account (Seminar 3 onwards).
+#
+#   ... | sudo class-modal-token USERNAME       the token comes in on stdin
+#   sudo class-modal-token --remove USERNAME    takes it away again
+#
+# stdin is the "modal token set --token-id ak-... --token-secret as-..." line
+# that Modal shows when you create a token. It becomes the profile "aca-class"
+# in the student's ~/.modal.toml, and their active one. The token is never
+# printed.
+set -euo pipefail
+[ "$(id -u)" -eq 0 ] || { echo "Run with sudo." >&2; exit 1; }
+remove=0
+if [ "${1:-}" = "--remove" ]; then remove=1; shift; fi
+user="${1:?Usage: ... | sudo class-modal-token USERNAME   or   sudo class-modal-token --remove USERNAME}"
+id "$user" >/dev/null 2>&1 || { echo "No user called $user." >&2; exit 1; }
+file="/home/$user/.modal.toml"
+input=""
+[ "$remove" -eq 0 ] && input="$(cat)"
+
+REMOVE="$remove" INPUT="$input" python3 - "$file" <<'PY'
+import os, re, sys, tomllib
+from pathlib import Path
+
+path = Path(sys.argv[1])
+profiles = tomllib.loads(path.read_text()) if path.exists() else {}
+if os.environ["REMOVE"] == "1":
+    if profiles.pop("aca-class", None) is None:
+        sys.exit("No class token there.")
+    if profiles and not any(p.get("active") for p in profiles.values()):
+        next(iter(profiles.values()))["active"] = True
+else:
+    token_id = re.search(r"\bak-[A-Za-z0-9]+", os.environ["INPUT"])
+    token_secret = re.search(r"\bas-[A-Za-z0-9]+", os.environ["INPUT"])
+    if not (token_id and token_secret):
+        sys.exit("No token on stdin: pipe in the 'modal token set --token-id ak-... --token-secret as-...' line.")
+    for p in profiles.values():
+        p["active"] = False
+    profiles["aca-class"] = {"token_id": token_id.group(), "token_secret": token_secret.group(), "active": True}
+
+def value(v):
+    return ("true" if v else "false") if isinstance(v, bool) else '"' + str(v).replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+path.write_text("".join(
+    f"[{name}]\n" + "".join(f"{k} = {value(v)}\n" for k, v in fields.items()) + "\n"
+    for name, fields in profiles.items()
+))
+PY
+[ -f "$file" ] && { chown "$user:$user" "$file"; chmod 600 "$file"; }
+if [ "$remove" -eq 1 ]; then echo "$user: class Modal token removed"
+else echo "$user now uses the class's Modal account (profile aca-class)"; fi
+EOF
+
+chmod 755 /usr/local/sbin/class-sync-keys /usr/local/sbin/class-add-student /usr/local/sbin/class-list /usr/local/sbin/class-modal-token
 echo '* * * * * root /usr/local/sbin/class-sync-keys' > /etc/cron.d/class-sync-keys
 systemctl enable --now cron >/dev/null 2>&1 || true
 
@@ -157,4 +211,5 @@ say "Done"
 echo "Add students:   sudo class-add-student GITHUB_USERNAME"
 echo "            or: sudo class-add-student --key \"ssh-ed25519 AAAA...\" USERNAME"
 echo "See them:       sudo class-list"
+echo "Class Modal account for a student without a card:  ... | sudo class-modal-token USERNAME"
 echo "Students log in with:  ssh SERVER_USERNAME@$(curl -fsS -m 5 https://api.ipify.org 2>/dev/null || echo THIS-SERVER-IP)"

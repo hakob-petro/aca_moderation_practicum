@@ -42,16 +42,17 @@ Follow **[setup/STUDENT_SETUP.md](setup/STUDENT_SETUP.md)**: a GitHub account,
 an SSH key, and that key added to GitHub. About 15 minutes. Then send your
 GitHub username to the course chat.
 
-**Where you work:** in Sessions 1 and 2 the whole class shares one server, each
-with your own account on it. From Session 3, each of you gets a server of your
-own.
+**Where you work:** the whole class shares one server, each with your own
+account on it. From Session 3 your GPU work runs on Modal, a cloud that rents
+you a GPU for exactly as long as your code runs.
 
 ---
 
 ## The six sessions
 
-Each session's mission cards and checks are in its folder: start with
-[seminar_1](seminar_1/README.md), then [seminar_2](seminar_2/README.md).
+Each session's mission cards and checks are in its folder:
+[seminar_1](seminar_1/README.md), [seminar_2](seminar_2/README.md),
+[seminar_3](seminar_3/README.md).
 
 | Session | You will |
 |---|---|
@@ -111,7 +112,7 @@ All free.
 |---|---|
 | GitHub, Google | before Session 1 |
 | OpenCode Zen, Google AI Studio key | Session 1 |
-| Modal | Session 3 |
+| Modal, with a payment method (no card? the class's account) | before Session 3 |
 | Kaggle | at home, before Session 4 |
 | OpenRouter | homework |
 
@@ -119,11 +120,15 @@ All free.
 
 ## Credit rules
 
-You have free credit on Modal ($30 a month). The course uses a small part of
-it, as long as you follow two rules:
+You have free credit on Modal: $30 a month. Modal asks for a payment method
+before it runs anything on a GPU, but charges nothing within the free credit.
+If you have no card, you use the class's account instead. The course uses a
+small part of the credit, as long as you follow three rules:
 
-1. **Stop your Modal apps** at the end of each session.
-2. **Never set `min_containers` in a Modal app.** It keeps a GPU running
+1. **Set your spend limit to $0** (Settings → Usage & Billing), so Modal can
+   never charge you. On the class's account, your instructor has set it.
+2. **Stop your Modal apps** at the end of each session.
+3. **Never set `min_containers` in a Modal app.** It keeps a GPU running
    around the clock, about $19 a day.
 
 ---

@@ -1,0 +1,7 @@
+# Your own comments for the model to judge. One per line:   rule | comment
+# rule is advertising or legal. Lines starting with # are ignored.
+# Write at least five of your own, for both rules. Try easy ones and tricky ones.
+#
+# For example (these two do not count, write your own):
+advertising | Get 1000 Instagram followers for $5, DM me or visit cheapfollows.example
+legal | Can my landlord keep my deposit if I leave a month early?

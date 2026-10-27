@@ -1,0 +1,15 @@
+# Mission 3: what you saw inside the model. Write each answer after its = sign.
+
+# Step 2: how many tokens is "Get 1000 Instagram followers for $5"?
+tokens_in_sentence =
+
+# Step 2: the numbers of these tokens
+yes_id =
+space_yes_id =
+no_id =
+
+# Step 4: logits.shape, as Python printed it
+logits_shape =
+
+# Step 6: your P(Yes) for "Can my landlord keep my deposit?", with two decimals
+p_yes_landlord =

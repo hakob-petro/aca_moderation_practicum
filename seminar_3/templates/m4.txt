@@ -1,0 +1,16 @@
+# Mission 4: AUC by hand.
+#
+# Five comments, with the model's score and the true label:
+#
+#   comment   score   breaks the rule?
+#   A         0.9     yes
+#   B         0.6     no
+#   C         0.4     yes
+#   D         0.3     no
+#   E         0.1     no
+#
+# AUC is the share of (breaking, clean) pairs in which the breaking comment
+# scores higher. How many such pairs are there, in how many does the breaking
+# one score higher, and so what is the AUC? Write it as a number, like 0.75.
+
+auc_by_hand =

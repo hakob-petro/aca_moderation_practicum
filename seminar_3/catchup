@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Seminar 3 catch-up.   Usage:  ./catchup N
+here="$(cd "$(dirname "$0")" && pwd)"
+case "${1:-}" in
+  2)
+    echo "Mission 2 needs no GPU. Making the data split you need for mission 4:"
+    python3 "$here/prepare_data.py" >/dev/null && echo "  done: ~/s3/data/train.jsonl and dev.jsonl"
+    echo "Start mission 2 from step 2. Answer its questions at home if you run out of time." ;;
+  3)
+    echo "Mission 3 needs mission 1's GPU access: ./check 1 must pass."
+    echo "It does not need mission 2. Start it straight away: open mission_3.md." ;;
+  4)
+    echo "Mission 4 needs mission 1's GPU access (./check 1) and the data split."
+    if [ ! -f "$HOME/s3/data/dev.jsonl" ]; then
+      python3 "$here/prepare_data.py" >/dev/null && echo "  Made the data split: ~/s3/data/dev.jsonl"
+    else
+      echo "  The data split is there already."
+    fi
+    echo "It does not need mission 3. Start it: open mission_4.md." ;;
+  1)
+    echo "Missions 3 and 4 need mission 1: there is no way around the GPU."
+    echo "Put a sticky note on your laptop lid; meanwhile do mission 2, which needs no GPU." ;;
+  *)
+    echo "Usage: ./catchup N   (N = 1, 2, 3 or 4)"; exit 2 ;;
+esac
