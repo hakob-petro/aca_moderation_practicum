@@ -1,0 +1,7 @@
+# Mission 3: five dev comments your model got wrong, from python3 wrong.py.
+# One per line:   ROW_ID | model wrong   (or: label wrong) | why, in a sentence
+wrong_1 =
+wrong_2 =
+wrong_3 =
+wrong_4 =
+wrong_5 =

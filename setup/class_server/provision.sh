@@ -57,6 +57,9 @@ systemctl daemon-reload 2>/dev/null || true
 say "Class scripts"
 mkdir -p /etc/class
 touch /etc/class/students
+# Session 4: everyone's results, for the class table. Anyone may add a file;
+# only its owner can change or delete it (the sticky bit, as on /tmp).
+install -d -m 1777 /srv/aca/results
 
 cat > /usr/local/sbin/class-sync-keys <<'EOF'
 #!/usr/bin/env bash

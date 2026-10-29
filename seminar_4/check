@@ -1,0 +1,212 @@
+#!/usr/bin/env bash
+# Seminar 4 checks.   Usage:  ./check 1   (or 2, 3, 4; or: ./check generalise, for the homework)
+set -uo pipefail
+here="$(cd "$(dirname "$0")" && pwd)"
+S4="$HOME/s4"
+SHARED=/srv/aca/results
+export PATH="$HOME/.local/bin:$PATH"
+
+pass=0; fail=0
+ok()   { printf 'PASS  %s\n' "$1"; pass=$((pass + 1)); }
+bad()  { printf 'FAIL  %s\n' "$1"; fail=$((fail + 1)); [ -n "${2:-}" ] && printf '      -> %s\n' "$2"; }
+
+# The Python checks print lines "PASS<tab>text" or "FAIL<tab>text<tab>hint" into $tmp.
+tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT
+report() {
+  while IFS=$'\t' read -r status text hint; do
+    if [ "$status" = PASS ]; then ok "$text"; elif [ "$status" = FAIL ]; then bad "$text" "$hint"; else printf '%s\n' "$status"; fi
+  done
+}
+
+# Checks every finished run in ~/s4/results: its AUC must match its predictions.
+runs_ok() {
+  python3 - "$here/../seminar_3" "$S4/results" "$HOME/s3/data/dev.jsonl" <<'PY' >"$tmp"
+import json, sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from auc import column_averaged_auc
+
+def say(ok, text, hint=""):
+    print(f"{'PASS' if ok else 'FAIL'}\t{text}\t{hint}")
+
+dev = {json.loads(l)["row_id"]: json.loads(l)["rule_violation"] for l in open(sys.argv[3], encoding="utf-8")}
+runs = sorted(Path(sys.argv[2]).glob("*.json"))
+good = []
+for p in runs:
+    summary = json.loads(p.read_text())
+    preds_file = p.with_name(p.stem + "_predictions.csv")
+    if not preds_file.exists():
+        continue
+    import csv
+    preds = list(csv.DictReader(preds_file.open(encoding="utf-8")))
+    if len(preds) != len(dev) or any(dev.get(int(r["row_id"])) != int(r["label"]) for r in preds):
+        continue
+    mean, _ = column_averaged_auc(preds)
+    if abs(mean - summary.get("auc", -1)) < 0.001:
+        good.append((summary["auc"], p.stem))
+say(bool(good), f"{len(good)} finished training run(s) in ~/s4/results",
+    "in tmux: cd ~/course/seminar_4 && modal run train.py, and let it finish")
+for auc, name in sorted(good, reverse=True):
+    print(f"      {name}: dev AUC {auc:.3f}   (untrained: 0.487)")
+PY
+  report <"$tmp"
+}
+
+check1() {
+  if ! command -v modal >/dev/null 2>&1; then bad "the modal command is not installed" "Seminar 3, mission 1: uv tool install modal"; return; fi
+  runs_ok
+  if modal volume ls aca-models runs 2>/dev/null | grep -q 'runs/'; then ok "your adapter is in the Modal volume aca-models"
+  else bad "no adapter in your Modal volume aca-models" "the training did not finish: run it again in tmux"; fi
+}
+
+check_results() {
+  if [ ! -f "$SHARED/$USER.json" ]; then
+    bad "your result is not on the class table" "cd ~/course/seminar_4 && ./share"
+  elif python3 -c "
+import json, sys, pathlib
+shared = json.load(open(sys.argv[1]))
+mine = [json.loads(p.read_text()) for p in pathlib.Path(sys.argv[2]).glob('*.json')]
+sys.exit(0 if any(m.get('run') == shared.get('run') and m.get('auc') == shared.get('auc') for m in mine) else 1)
+" "$SHARED/$USER.json" "$S4/results"; then
+    ok "your result is on the class table"
+  else
+    bad "the class table has a result that is not one of your runs" "cd ~/course/seminar_4 && ./share"
+  fi
+
+  if [ ! -f "$S4/m3.txt" ]; then
+    bad "answers file ~/s4/m3.txt" "cp ~/course/seminar_4/templates/m3.txt ~/s4/m3.txt && nano ~/s4/m3.txt"
+    return
+  fi
+  python3 - "$S4/m3.txt" "$S4/results" <<'PY' >"$tmp"
+import csv, sys
+from pathlib import Path
+
+def say(ok, text, hint=""):
+    print(f"{'PASS' if ok else 'FAIL'}\t{text}\t{hint}")
+
+# A comment counts as "got wrong" if any of your runs scored it on the wrong side of 0.
+wrong = set()
+for f in Path(sys.argv[2]).glob("*_predictions.csv"):
+    for r in csv.DictReader(f.open(encoding="utf-8")):
+        if (float(r["score"]) > 0) != (r["label"] == "1"):
+            wrong.add(r["row_id"])
+answers = {}
+for line in open(sys.argv[1], encoding="utf-8"):
+    if "=" in line and not line.lstrip().startswith("#"):
+        k, v = line.split("=", 1)
+        answers[k.strip()] = v.strip()
+seen = set()
+for i in range(1, 6):
+    raw = answers.get(f"wrong_{i}", "")
+    parts = [p.strip() for p in raw.split("|")]
+    row_id = parts[0] if parts else ""
+    verdict = parts[1].lower() if len(parts) > 1 else ""
+    why = parts[2] if len(parts) > 2 else ""
+    good = row_id in wrong and row_id not in seen and verdict in ("model wrong", "label wrong") and len(why) >= 15
+    seen.add(row_id)
+    say(good, f"wrong_{i}: {raw[:60] or 'empty'}",
+        "a row_id from python3 wrong.py (one your model got wrong), then | model wrong or label wrong | a sentence why")
+PY
+  report <"$tmp"
+}
+
+check_kaggle() {
+  local user st subs
+  if ! command -v kaggle >/dev/null 2>&1; then bad "the kaggle command is not installed" "uv tool install kaggle"; return; fi
+  user=$(kaggle config view 2>/dev/null | sed -n 's/.*username: *//p' | head -n 1)
+  if [ -z "$user" ] || [ "$user" = "None" ]; then
+    bad "kaggle does not know who you are" "step 1: your API token in ~/.kaggle/access_token, then kaggle config view"
+    return
+  fi
+  ok "kaggle knows you: $user"
+
+  if kaggle competitions files jigsaw-agile-community-rules >/dev/null 2>&1; then ok "you have joined the competition"
+  else bad "you have not joined the competition" "on its Kaggle page: Late Submission, then accept the rules"; return; fi
+
+  st=$(kaggle datasets status "$user/aca-adapter" 2>&1 | tail -n 1)
+  if printf '%s' "$st" | grep -qi ready; then ok "your adapter is on Kaggle: $user/aca-adapter"
+  else bad "no adapter dataset ready on Kaggle (${st:-none})" "./kaggle_prepare, then kaggle datasets create -p ~/s4/kaggle/adapter"; fi
+
+  st=$(kaggle kernels status "$user/aca-jigsaw-submission" 2>&1 | tail -n 1)
+  if printf '%s' "$st" | grep -q COMPLETE; then ok "your notebook ran on Kaggle"
+  else bad "your notebook has not run to the end (${st:-not pushed})" "kaggle kernels push -p ~/s4/kaggle/notebook; if it says ERROR, read its log (step 5)"; fi
+
+  subs=$(kaggle competitions submissions jigsaw-agile-community-rules 2>/dev/null | sed -n '3p')
+  if [ -n "$subs" ]; then
+    ok "you submitted to the competition"
+    if printf '%s' "$subs" | grep -q PENDING; then echo "      Kaggle is still scoring it: go on with mission 3, look again in mission 4."
+    else echo "      latest: $(printf '%s' "$subs" | sed 's/  */ /g' | cut -c1-150)"; fi
+  else
+    bad "no submission yet" "kaggle competitions submit jigsaw-agile-community-rules -k $user/aca-jigsaw-submission -v VERSION -f submission.csv -m \"my model\""
+  fi
+}
+
+check4() {
+  if [ ! -f "$S4/m4.txt" ]; then
+    bad "answers file ~/s4/m4.txt" "cp ~/course/seminar_4/templates/m4.txt ~/s4/m4.txt && nano ~/s4/m4.txt"
+    return
+  fi
+  python3 - "$S4/m4.txt" "$SHARED/$USER.json" <<'PY' >"$tmp"
+import json, re, sys
+from pathlib import Path
+
+def say(ok, text, hint=""):
+    print(f"{'PASS' if ok else 'FAIL'}\t{text}\t{hint}")
+
+answers = {}
+for line in open(sys.argv[1], encoding="utf-8"):
+    if "=" in line and not line.lstrip().startswith("#"):
+        k, v = line.split("=", 1)
+        answers[k.strip()] = v.strip()
+
+def number(key):
+    m = re.search(r"\d*\.\d+|\d+", answers.get(key, ""))
+    return float(m.group()) if m else None
+
+shared = Path(sys.argv[2])
+dev = number("dev_auc")
+want = json.loads(shared.read_text()).get("auc") if shared.exists() else None
+say(dev is not None and want is not None and abs(dev - want) < 0.002, f"dev_auc: {answers.get('dev_auc') or 'empty'}",
+    "the auc in /srv/aca/results/$USER.json (./share it first: mission 3)")
+k = number("kaggle_score")
+say(k is not None and 0.3 <= k <= 1, f"kaggle_score: {answers.get('kaggle_score') or 'empty'}",
+    "the score on the competition's Submissions page, a number like 0.7")
+gap = answers.get("gap", "")
+say(len(gap) >= 60, "gap: two sentences" if len(gap) >= 60 else f"gap: {gap or 'empty'}",
+    "two sentences on why the numbers differ: think of the rules in each test")
+PY
+  report <"$tmp"
+}
+
+check_generalise() {
+  python3 - "$S4/results" <<'PY' >"$tmp"
+import json, sys
+from pathlib import Path
+
+def say(ok, text, hint=""):
+    print(f"{'PASS' if ok else 'FAIL'}\t{text}\t{hint}")
+
+runs = [json.loads(p.read_text()) for p in Path(sys.argv[1]).glob("*.json")]
+one_rule = [r for r in runs if r.get("only")]
+say(bool(one_rule), f"{len(one_rule)} run(s) trained on one rule only",
+    "modal run train.py --only legal   (or advertising)")
+for r in one_rule:
+    other = "advertising" if r["only"] == "legal" else "legal"
+    per = r.get("auc_per_rule", {})
+    print(f"      trained on {r['only']} only: AUC on {r['only']} {per.get(r['only'], 0):.3f}, on {other} (never seen) {per.get(other, 0):.3f}")
+PY
+  report <"$tmp"
+}
+
+case "${1:-}" in
+  1) check1 ;;
+  2) check_kaggle ;;
+  3) check_results ;;
+  4) check4 ;;
+  generalise) check_generalise ;;
+  *) echo "Usage: ./check N   (N = 1, 2, 3 or 4; or: ./check generalise, for the homework)"; exit 2 ;;
+esac
+
+echo
+if [ "$fail" -eq 0 ]; then echo "MISSION $1: ALL $pass PASSED. Colour your cell on the board."
+else echo "MISSION $1: $fail to fix. Follow the arrows above, then run ./check $1 again."; exit 1; fi

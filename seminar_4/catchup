@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Seminar 4 catch-up.   Usage:  ./catchup N
+here="$(cd "$(dirname "$0")" && pwd)"
+case "${1:-}" in
+  1)
+    if [ ! -f "$HOME/s3/data/dev.jsonl" ]; then
+      python3 "$here/../seminar_3/prepare_data.py" >/dev/null && echo "Made your train/dev split (Seminar 3): ~/s3/data"
+    fi
+    echo "Mission 1 needs Modal working (Seminar 3, mission 1). Start it: open mission_1.md." ;;
+  2|3)
+    if ls "$HOME"/s4/results/*.json >/dev/null 2>&1; then
+      echo "You have a trained model. Start mission $1 straight away."
+    else
+      echo "Missions 2 and 3 need a trained model from mission 1. Start its training now,"
+      echo "in tmux, and read mission $1 while it runs (about 5 minutes):"
+      echo "  tmux new -s train"
+      echo "  cd ~/course/seminar_4 && modal run train.py"
+    fi ;;
+  4)
+    echo "Mission 4 needs your dev AUC (mission 3: ./share) and your Kaggle score"
+    echo "(mission 2). Kaggle takes about 20 minutes to score: finish"
+    echo "mission 4 at home if your score has not arrived." ;;
+  *)
+    echo "Usage: ./catchup N   (N = 1, 2, 3 or 4)"; exit 2 ;;
+esac

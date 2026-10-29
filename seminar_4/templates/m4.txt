@@ -1,0 +1,10 @@
+# Mission 4: your two numbers, and why they differ.
+
+# Your dev AUC, from /srv/aca/results/YOURNAME.json
+dev_auc =
+
+# Your Kaggle score, from the competition's Submissions page
+kaggle_score =
+
+# Why are they different? Two sentences, on one line.
+gap =

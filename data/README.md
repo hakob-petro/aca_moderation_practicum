@@ -5,8 +5,8 @@
 (2025): 2,029 Reddit comments, each judged against one of two rules. The
 competition's rules list its data as **public domain**. This copy comes from
 [a mirror on Hugging Face](https://huggingface.co/datasets/phucthaiv02/Jigsaw-Agile-Community-Rules-Classification)
-and matches the competition's file: the same 2,029 rows, two rules and
-columns.
+and is identical to the competition's `train.csv`, byte for byte (the same
+SHA-256).
 
 The hidden test set, with four more rules, stays on Kaggle. You submit to it
 in Session 4.

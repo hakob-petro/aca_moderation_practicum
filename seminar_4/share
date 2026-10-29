@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Puts one of your results on the class table.
+#
+#   ./share          your best run so far (the highest AUC in ~/s4/results)
+#   ./share RUN      a particular run, e.g. ./share lr0.0002-ep1-all
+#
+# It copies the run's summary to /srv/aca/results/YOURNAME.json, where
+# report.py reads everyone's. Only you can change your file there.
+set -euo pipefail
+results="$HOME/s4/results"
+shared=/srv/aca/results
+
+if [ -n "${1:-}" ]; then
+  file="$results/$1.json"
+else
+  file=$(python3 - "$results" <<'PY'
+import json, sys
+from pathlib import Path
+runs = [p for p in Path(sys.argv[1]).glob("*.json")]
+best = max(runs, key=lambda p: json.loads(p.read_text()).get("auc", 0), default=None)
+print(best or "")
+PY
+)
+fi
+[ -n "$file" ] && [ -f "$file" ] || { echo "No such result. Your runs: $(ls "$results" 2>/dev/null | grep -v predictions | sed 's/\.json$//' | tr '\n' ' ')" >&2; exit 1; }
+[ -d "$shared" ] || { echo "No class table on this machine ($shared)." >&2; exit 1; }
+
+cp "$file" "$shared/$USER.json"
+chmod 644 "$shared/$USER.json"
+echo "Shared $(basename "$file" .json): AUC $(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['auc'])" "$file"). See the class table: python3 report.py"

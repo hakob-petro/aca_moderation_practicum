@@ -52,7 +52,7 @@ you a GPU for exactly as long as your code runs.
 
 Each session's mission cards and checks are in its folder:
 [seminar_1](seminar_1/README.md), [seminar_2](seminar_2/README.md),
-[seminar_3](seminar_3/README.md).
+[seminar_3](seminar_3/README.md), [seminar_4](seminar_4/README.md).
 
 | Session | You will |
 |---|---|

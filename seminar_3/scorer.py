@@ -91,9 +91,10 @@ def p_yes(score: float) -> float:
 # ---------- the model ----------
 
 class Scorer:
-    """Loads the model once, then scores many conversations."""
+    """Loads the model once, then scores many conversations. With adapter=PATH,
+    it adds a LoRA adapter trained in Session 4 on top of the model."""
 
-    def __init__(self):
+    def __init__(self, adapter: str | None = None):
         import os
 
         os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")  # no progress bars or warnings
@@ -106,9 +107,10 @@ class Scorer:
 
         self.torch = torch
         if torch.cuda.is_available():
-            # bfloat16 where the GPU has it (L4, A10); float16 on older ones (T4).
+            # bfloat16 on GPUs built for it (L4, A10 and newer); float16 on older ones
+            # (T4), which only emulate bfloat16, slowly.
             self.device = "cuda"
-            dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+            dtype = torch.bfloat16 if torch.cuda.get_device_capability(0)[0] >= 8 else torch.float16
         elif torch.backends.mps.is_available():
             self.device, dtype = "mps", torch.float32
         else:
@@ -118,6 +120,11 @@ class Scorer:
         self.tokenizer = AutoTokenizer.from_pretrained(MODEL, revision=REVISION)
         self.tokenizer.padding_side = "left"  # so that every prompt in a batch ends at the same position
         self.model = AutoModelForCausalLM.from_pretrained(MODEL, revision=REVISION, dtype=dtype).to(self.device)
+        if adapter:
+            from peft import PeftModel
+
+            # Fold the adapter's small matrices into the model's own: same answers, faster.
+            self.model = PeftModel.from_pretrained(self.model, adapter).merge_and_unload()
         self.model.eval()
 
         # "Yes" and "No" are each one token: one entry in the model's vocabulary.

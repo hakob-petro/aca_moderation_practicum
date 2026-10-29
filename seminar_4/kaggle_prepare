@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""Gets your adapter and the submission notebook ready for Kaggle.
+
+    ./kaggle_prepare          your best run (the highest dev AUC)
+    ./kaggle_prepare RUN      a particular run
+
+It makes two folders, each with the small JSON file Kaggle needs:
+  ~/s4/kaggle/adapter    your adapter, from your Modal volume: a Kaggle dataset
+  ~/s4/kaggle/notebook   submission.py: the notebook that scores the test set
+and prints the kaggle commands to type next.
+"""
+
+import json
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+RESULTS = Path.home() / "s4" / "results"
+OUT = Path.home() / "s4" / "kaggle"
+COMPETITION = "jigsaw-agile-community-rules"
+MODEL = "qwen-lm/qwen-3/transformers/0.6b/1"
+
+
+def run(*command: str) -> str:
+    done = subprocess.run(command, capture_output=True, text=True)
+    if done.returncode != 0:
+        sys.exit(f"`{' '.join(command)}` failed:\n{done.stderr.strip() or done.stdout.strip()}")
+    return done.stdout
+
+
+def main() -> None:
+    if shutil.which("kaggle") is None:
+        sys.exit("The kaggle command is not installed: uv tool install kaggle")
+    username = re.search(r"username:\s*(\S+)", run("kaggle", "config", "view"))
+    if not username or username.group(1) == "None":
+        sys.exit("Kaggle does not know you yet: put your API token in ~/.kaggle/access_token (mission 3, step 1)")
+    user = username.group(1)
+
+    runs = {p.stem: json.loads(p.read_text()) for p in RESULTS.glob("*.json")}
+    if not runs:
+        sys.exit("No trained run in ~/s4/results: do mission 1 first.")
+    name = sys.argv[1] if len(sys.argv) > 1 else max(runs, key=lambda r: runs[r].get("auc", 0))
+    if name not in runs:
+        sys.exit(f"No run called {name}. Yours: {', '.join(sorted(runs))}")
+
+    adapter = OUT / "adapter"
+    shutil.rmtree(adapter, ignore_errors=True)
+    adapter.mkdir(parents=True)
+    for file in ("adapter_config.json", "adapter_model.safetensors"):
+        run("modal", "volume", "get", "aca-models", f"runs/{name}/{file}", str(adapter / file))
+    (adapter / "dataset-metadata.json").write_text(json.dumps({
+        "title": "aca adapter",
+        "id": f"{user}/aca-adapter",
+        "licenses": [{"name": "CC0-1.0"}],
+    }, indent=2) + "\n")
+
+    notebook = OUT / "notebook"
+    shutil.rmtree(notebook, ignore_errors=True)
+    notebook.mkdir(parents=True)
+    shutil.copy(HERE / "kaggle" / "submission.py", notebook / "submission.py")
+    (notebook / "kernel-metadata.json").write_text(json.dumps({
+        "id": f"{user}/aca-jigsaw-submission",
+        "title": "aca jigsaw submission",
+        "code_file": "submission.py",
+        "language": "python",
+        "kernel_type": "script",
+        "is_private": True,
+        "enable_gpu": True,
+        "enable_internet": False,
+        "competition_sources": [COMPETITION],
+        "dataset_sources": [f"{user}/aca-adapter"],
+        "model_sources": [MODEL],
+        "kernel_sources": [],
+    }, indent=2) + "\n")
+    (OUT / "run.txt").write_text(name + "\n")
+
+    exists = subprocess.run(["kaggle", "datasets", "status", f"{user}/aca-adapter"], capture_output=True, text=True).returncode == 0
+    upload = (f"kaggle datasets version -p {adapter} -m {name}" if exists else f"kaggle datasets create -p {adapter}")
+    print(f"Ready: run {name} (dev AUC {runs[name]['auc']}), for Kaggle user {user}.\n")
+    print("Next, type:")
+    print(f"  {upload}")
+    print(f"  kaggle datasets status {user}/aca-adapter          (again, until it says ready)")
+    print(f"  kaggle kernels push -p {notebook}")
+    print(f"  kaggle kernels status {user}/aca-jigsaw-submission  (again, until COMPLETE)")
+
+
+if __name__ == "__main__":
+    main()
