@@ -9,6 +9,11 @@ your **baseline**: in Session 4 you fine-tune the model to beat it.
 explains Yes/No logits, accuracy, MMLU scoring and the AUC formula, with
 measured results and the training-example overlap found in our dev split.
 
+**Notebook route for Missions 3 and 4:** follow
+[Run Missions 3 and 4 in Jupyter on Modal](NOTEBOOK.md). It opens
+[the guided notebook](missions_3_4.ipynb) in your laptop's browser and exports
+the same mission files for the existing checks and Seminar 4.
+
 ---
 
 ## Before you start

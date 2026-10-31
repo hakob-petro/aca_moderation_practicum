@@ -2,6 +2,9 @@
 
 **Mode:** by hand · **Time:** 35 minutes
 
+**Prefer a notebook?** [Run Missions 3 and 4 in Jupyter on Modal](NOTEBOOK.md)
+covers these steps and exports the files for the same mission check.
+
 Your model is **Qwen3-0.6B**, a small language model, not trained for this
 task at all. Today you open it up yourself with **transformers**, the Python
 library almost every language-model project uses, and follow one comment from

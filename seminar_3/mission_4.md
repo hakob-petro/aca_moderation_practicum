@@ -2,6 +2,10 @@
 
 **Mode:** by hand · **Time:** 25 minutes
 
+**Notebook route:** continue the Mission 4 section of
+[the guided notebook](missions_3_4.ipynb). See [the Modal guide](NOTEBOOK.md)
+for exporting its results and running the same mission check on the class server.
+
 How good is the untrained model? You score all 401 dev comments and measure
 it the way the Kaggle competition does: with **AUC**. That number is your
 **baseline**, the one to beat when you fine-tune the model in Session 4.
