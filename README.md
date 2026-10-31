@@ -54,6 +54,9 @@ Each session's mission cards and checks are in its folder:
 [seminar_1](seminar_1/README.md), [seminar_2](seminar_2/README.md),
 [seminar_3](seminar_3/README.md), [seminar_4](seminar_4/README.md).
 
+For the scoring concepts and measured fine-tuning results, read
+[Evaluating our moderation model](materials/seminar_3/yes_no_scores_and_auc.md).
+
 | Session | You will |
 |---|---|
 | 1. **Workspace** | find your way around Linux, work in git and GitHub, connect a coding agent to free model providers |

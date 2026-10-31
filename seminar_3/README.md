@@ -5,6 +5,10 @@ will learn from, see how a language model turns a question into a
 probability, and measure how good the untrained model is. That number is
 your **baseline**: in Session 4 you fine-tune the model to beat it.
 
+**Reference report:** [Evaluating our moderation model](../materials/seminar_3/yes_no_scores_and_auc.md)
+explains Yes/No logits, accuracy, MMLU scoring and the AUC formula, with
+measured results and the training-example overlap found in our dev split.
+
 ---
 
 ## Before you start

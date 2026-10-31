@@ -4,6 +4,10 @@ Today you fine-tune your model, compare your run with the whole class, submit
 it to the Kaggle competition, and find out how well it does on rules it has
 never seen.
 
+**Reference report:** [Evaluating our moderation model](../materials/seminar_3/yes_no_scores_and_auc.md)
+compares models before and after fine-tuning, explains threshold selection,
+and shows how training-example overlap changes the interpretation of dev AUC.
+
 ---
 
 ## Before you start
