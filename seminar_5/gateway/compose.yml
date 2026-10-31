@@ -1,0 +1,21 @@
+services:
+  gateway:
+    build: .
+    env_file: .env
+    # TODO: bind container port 8000 to host 127.0.0.1:${PORT}
+    ports:
+      - "TODO"
+    # TODO: restart unless you deliberately stopped the container
+    restart: "no"
+    mem_limit: 256m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

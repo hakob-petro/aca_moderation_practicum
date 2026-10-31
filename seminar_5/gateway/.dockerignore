@@ -1,0 +1,7 @@
+*
+!requirements.txt
+!app.py
+!policy.py
+!model_client.py
+!scorer.py
+!Dockerfile

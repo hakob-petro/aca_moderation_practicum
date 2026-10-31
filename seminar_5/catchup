@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+case "${1:-}" in
+  1) echo "Need a Seminar 4 adapter: train it now, or ask the instructor for a fallback run."
+     echo "Then ./prepare --run RUN. The check needs real inference, not a fake result." ;;
+  2) echo "If mission 1 is unfinished, you can still edit policy.py and compose.yml in parallel."
+     echo "Ask the instructor for the shared model URL/key if your own GPU is unavailable."
+     echo "Keep your own GATEWAY_KEY. Finish your own deployment at home." ;;
+  3|4) echo "These missions need a working gateway. Ask your agent to finish mission 2's three TODOs,"
+       echo "or ask the instructor for the reference policy and Compose settings. Then ./check 2."
+       echo "Never put a private key in an agent prompt. Work in ~/aca-work/deploy." ;;
+  *) echo "Usage: ./catchup 1|2|3|4"; exit 2 ;;
+esac

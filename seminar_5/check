@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""Run ./check 1, 2, 3 or 4. Network checks make real requests."""
+import importlib.util
+import json
+import math
+from pathlib import Path
+import subprocess
+import sys
+
+from common import SETUP, config, compose, env, http, SAMPLE
+
+passed = failed = 0
+
+
+def check(ok, message):
+    global passed, failed
+    passed += bool(ok)
+    failed += not ok
+    print(f"{'PASS' if ok else 'FAIL'}  {message}")
+
+
+def main(mission):
+    cfg, settings = config(), env()
+    work = Path(cfg["gateway"])
+    url = f"http://127.0.0.1:{settings['PORT']}"
+    key = settings["GATEWAY_KEY"]
+    if mission == "1":
+        model_url = settings["MODEL_URL"] + "/models"
+        status, data = http(model_url, settings["MODEL_KEY"], timeout=600)
+        check(status == 200 and {"base", "moderator"} <= {m["id"] for m in data.get("data", [])},
+              "vLLM lists base and moderator")
+        check(http(model_url)[0] == 401, "model refuses a missing API key")
+        check(http(model_url, "wrong-key")[0] == 401, "model refuses a wrong API key")
+        calls = [json.loads(x) for x in (SETUP / "calls.jsonl").read_text().splitlines()]
+        check({"base", "moderator"} <= {r["model"] for r in calls}, "you called both models (uv run client.py --model NAME)")
+        check(all(math.isfinite(r["score"]) and 0 <= r["p_yes"] <= 1 for r in calls), "finite scores and probabilities")
+    elif mission == "2":
+        status, _ = http(url + "/healthz")
+        check(status == 200, "gateway liveness")
+        for label, badkey in [("missing", ""), ("wrong", "wrong")]:
+            check(http(url + "/moderate", badkey, SAMPLE)[0] == 401, f"{label} gateway key refused")
+        for body in ({"comment": " ", "rule": "legal"}, {"comment": "a", "rule": "unknown"},
+                     {"comment": "x" * 2001, "rule": "legal"}):
+            check(http(url + "/moderate", key, body)[0] == 422, "invalid input rejected")
+        status, result = http(url + "/moderate", key, SAMPLE)
+        check(status == 200 and result.get("decision") in {"approve", "review", "remove"},
+              "real model produced a moderation decision (warm it with client.py if cold)")
+        spec = importlib.util.spec_from_file_location("policy", work / "policy.py")
+        policy = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(policy)
+        cases = [(0, "approve"), (.299, "approve"), (.3, "review"), (.799, "review"), (.8, "remove"), (1, "remove")]
+        check(all(policy.decide(p, .3, .8) == expected for p, expected in cases), "policy and both boundary values")
+        # A second policy catches hard-coded classroom thresholds.
+        check(policy.decide(.4, .5, .9) == "approve" and policy.decide(.85, .5, .9) == "review", "policy uses its arguments")
+        check((work / ".env").stat().st_mode & 0o077 == 0, ".env is private (chmod 600)")
+        cid = compose("ps", "-q", "gateway")
+        info = json.loads(subprocess.check_output(["docker", "inspect", cid]))[0]
+        bindings = info["HostConfig"]["PortBindings"].get("8000/tcp", [])
+        check(bool(bindings) and all(p["HostIp"] == "127.0.0.1" for p in bindings), "port bound to loopback only")
+        check(info["HostConfig"]["RestartPolicy"]["Name"] == "unless-stopped", "restart policy is unless-stopped")
+    elif mission == "3":
+        result = json.loads((SETUP / "failure.json").read_text())
+        check(all(result.get(x) for x in ("restart", "unavailable", "timeout", "malformed", "restored")), "failure/restart drill passed (python3 verify_deploy.py)")
+        load = json.loads((SETUP / "load.json").read_text())
+        check(load["requests"] == 200 and load["successes"] == 200, "200 successful requests (python3 load.py)")
+        check(load["p50_ms"] is not None and load["p95_ms"] >= load["p50_ms"], "p50/p95 measured over successful requests")
+        print(f"      p50={load['p50_ms']} ms; p95={load['p95_ms']} ms; errors={load['errors']}")
+    elif mission == "4":
+        result = json.loads((SETUP / "recovery.json").read_text())
+        check(result.get("answered") and result.get("removed"), "fresh clone answered; recovery containers removed")
+        check(bool(result.get("commit")), "recovery records the source commit")
+        check(http(url + "/healthz")[0] == 200, "original gateway is still alive")
+        tracked = subprocess.check_output(["git", "ls-files"], cwd=work, text=True).splitlines()
+        check(".env" not in tracked and "app.py" in tracked and "compose.yml" in tracked, "code tracked, .env excluded")
+        changes = subprocess.check_output(["git", "status", "--porcelain", "--", "."], cwd=work, text=True)
+        check(not changes.strip(), "deployment folder is committed")
+    else:
+        raise ValueError("Usage: ./check 1|2|3|4")
+
+
+try:
+    main(sys.argv[1] if len(sys.argv) > 1 else "")
+except Exception as error:
+    check(False, f"{type(error).__name__}: {error}")
+print(f"\n{passed} passed, {failed} to fix. " + ("Colour your cell on the board." if not failed else "Read the mission card, fix it, run again."))
+sys.exit(bool(failed))

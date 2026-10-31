@@ -52,7 +52,8 @@ you a GPU for exactly as long as your code runs.
 
 Each session's mission cards and checks are in its folder:
 [seminar_1](seminar_1/README.md), [seminar_2](seminar_2/README.md),
-[seminar_3](seminar_3/README.md), [seminar_4](seminar_4/README.md).
+[seminar_3](seminar_3/README.md), [seminar_4](seminar_4/README.md),
+[seminar_5](seminar_5/README.md).
 
 For the scoring concepts and measured fine-tuning results, read
 [Evaluating our moderation model](materials/seminar_3/yes_no_scores_and_auc.md).
@@ -63,7 +64,7 @@ For the scoring concepts and measured fine-tuning results, read
 | 2. **Docker** | run, fix and compose containers, and learn what exposing a port really does |
 | 3. **Train I: data and baseline** | run code on a cloud GPU, look at the data critically, see how a language model produces a probability, measure a baseline |
 | 4. **Train II: fine-tune and submit** | fine-tune the model, compare your runs, submit to Kaggle, and find out how your score holds up on rules your model has never seen |
-| 5. **Deploy** | serve your model, put your own service in front of it, make it survive failures, and stand up a second server in minutes |
+| 5. **Deploy** | serve your model, put your own service in front of it, test failures and load, and rebuild the service from git |
 | 6. **Product** | build the moderator console, log every decision, show similar past cases, and attack a classmate's console |
 
 ---
