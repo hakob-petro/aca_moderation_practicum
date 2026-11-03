@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2B2B2B"/>
+    </marker>
+    <style>
+      .h { font-size: 22px; font-weight: 700; letter-spacing: 1.5px; fill: #2B2B2B; }
+      .sub { font-size: 16px; fill: #5F5F5F; }
+      .t { font-size: 22px; font-weight: 700; fill: #1F1F1F; }
+      .b { font-size: 17px; fill: #2B2B2B; }
+      .s { font-size: 15px; fill: #666; }
+      .m { font-size: 16px; font-family: Menlo, Consolas, monospace; fill: #2B2B2B; }
+      .lab { font-size: 16px; fill: #2B2B2B; text-anchor: middle; }
+      .badge { fill: #D9822B; }
+      .bn { font-size: 17px; font-weight: 700; fill: #fff; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#FBFBF8"/>
+
+  <text x="50" y="62" font-size="34" font-weight="700" fill="#1F1F1F">Seminar 5: from model to service</text>
+  <text x="50" y="96" font-size="18" fill="#5F5F5F">One comment's trip: your laptop → your gateway → your model, and back</text>
+
+  <!-- ===== Laptop ===== -->
+  <rect x="30" y="130" width="340" height="570" rx="16" fill="#EDF1F7" stroke="#9AA9BC" stroke-width="2"/>
+  <text x="55" y="172" class="h">YOUR LAPTOP</text>
+  <text x="55" y="197" class="sub">where you call the service</text>
+
+  <rect x="55" y="240" width="285" height="305" rx="12" fill="#fff" stroke="#7D8DA3" stroke-width="2"/>
+  <text x="75" y="280" class="t">Browser or load.py</text>
+  <text x="75" y="307" class="m">localhost:8000/docs</text>
+  <line x1="75" y1="330" x2="320" y2="330" stroke="#DDD"/>
+  <text x="75" y="362" class="s">sends</text>
+  <text x="75" y="390" class="m">rule: advertising</text>
+  <text x="75" y="414" class="m">"Get 1000 Instagram</text>
+  <text x="75" y="438" class="m"> followers for $5…"</text>
+  <text x="75" y="482" class="s">gets back</text>
+  <text x="75" y="510" class="m" font-weight="700">decision: remove</text>
+
+  <!-- ===== Class server ===== -->
+  <rect x="510" y="130" width="500" height="570" rx="16" fill="#EDF5ED" stroke="#93B193" stroke-width="2"/>
+  <text x="535" y="172" class="h">CLASS SERVER</text>
+  <text x="535" y="197" class="sub">ssh ws · your own user and ports</text>
+
+  <rect x="540" y="240" width="440" height="305" rx="12" fill="#fff" stroke="#6E9A6E" stroke-width="2"/>
+  <text x="562" y="280" class="t">Your gateway</text>
+  <text x="562" y="305" class="s">a small web service in a Docker container</text>
+  <text x="562" y="348" class="b">1. check the gateway key</text>
+  <text x="562" y="378" class="b">2. ask the model for a score</text>
+  <text x="562" y="408" class="b">3. apply your policy</text>
+  <!-- policy bar: 0 .. 1 over 380 px -->
+  <rect x="580" y="425" width="114" height="34" fill="#5E9E6B"/>
+  <rect x="694" y="425" width="190" height="34" fill="#E3B341"/>
+  <rect x="884" y="425" width="76" height="34" fill="#C8553D"/>
+  <text x="637" y="448" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">approve</text>
+  <text x="789" y="448" font-size="15" font-weight="700" fill="#3A2E00" text-anchor="middle">review</text>
+  <text x="922" y="448" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">remove</text>
+  <text x="694" y="478" font-size="14" fill="#555" text-anchor="middle">0.30</text>
+  <text x="884" y="478" font-size="14" fill="#555" text-anchor="middle">0.80</text>
+  <text x="562" y="522" class="s">model down or too slow → an error, never a guess</text>
+  <circle cx="924" cy="242" r="17" class="badge"/><text x="924" y="248" class="bn">2</text>
+  <circle cx="964" cy="242" r="17" class="badge"/><text x="964" y="248" class="bn">3</text>
+
+  <rect x="540" y="590" width="440" height="80" rx="12" fill="#fff" stroke="#6E9A6E" stroke-width="2" stroke-dasharray="6 5"/>
+  <text x="562" y="622" class="m" font-weight="700">~/s5/gateway</text>
+  <text x="562" y="650" class="b">its code and Dockerfile, saved in git</text>
+  <circle cx="964" cy="592" r="17" class="badge"/><text x="964" y="598" class="bn">4</text>
+
+  <!-- ===== Modal ===== -->
+  <rect x="1150" y="130" width="420" height="570" rx="16" fill="#F4EEF7" stroke="#AE9BBE" stroke-width="2"/>
+  <text x="1175" y="172" class="h">MODAL</text>
+  <text x="1175" y="197" class="sub">cloud GPUs, paid by the second</text>
+
+  <rect x="1180" y="240" width="360" height="305" rx="12" fill="#fff" stroke="#8C74A0" stroke-width="2"/>
+  <text x="1202" y="280" class="t">Your model</text>
+  <text x="1202" y="305" class="s">vLLM on one GPU (L4 or A10)</text>
+  <text x="1202" y="348" class="m" font-weight="700">base</text>
+  <text x="1312" y="348" class="b">Qwen3-0.6B</text>
+  <text x="1202" y="378" class="m" font-weight="700">moderator</text>
+  <text x="1312" y="378" class="b">Qwen3 + your LoRA</text>
+  <line x1="1202" y1="400" x2="1520" y2="400" stroke="#DDD"/>
+  <text x="1202" y="432" class="b">wakes up on a request</text>
+  <text x="1202" y="455" class="s">(first one: a few minutes)</text>
+  <text x="1202" y="488" class="b">sleeps after 60 s with no work</text>
+  <text x="1202" y="518" class="b">answers 16 requests at once</text>
+  <circle cx="1524" cy="242" r="17" class="badge"/><text x="1524" y="248" class="bn">1</text>
+
+  <!-- volume cylinder -->
+  <line x1="1360" y1="590" x2="1360" y2="553" stroke="#2B2B2B" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <path d="M1250,602 v50 a110,14 0 0 0 220,0 v-50" fill="#fff" stroke="#8C74A0" stroke-width="2"/>
+  <ellipse cx="1360" cy="602" rx="110" ry="14" fill="#fff" stroke="#8C74A0" stroke-width="2"/>
+  <text x="1360" y="640" font-size="17" font-weight="700" fill="#2B2B2B" text-anchor="middle">your Seminar 4 adapter</text>
+  <text x="1360" y="688" class="s" text-anchor="middle">copied in by ./prepare</text>
+
+  <!-- ===== Arrows ===== -->
+  <line x1="342" y1="345" x2="536" y2="345" stroke="#2B2B2B" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="440" y="333" class="lab" font-weight="700">SSH tunnel</text>
+  <text x="440" y="369" class="lab">+ gateway key</text>
+  <line x1="538" y1="455" x2="344" y2="455" stroke="#2B2B2B" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="440" y="443" class="lab">decision</text>
+
+  <line x1="982" y1="345" x2="1176" y2="345" stroke="#2B2B2B" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="1080" y="333" class="lab" font-weight="700">HTTPS</text>
+  <text x="1080" y="369" class="lab">+ model key</text>
+  <line x1="1178" y1="455" x2="984" y2="455" stroke="#2B2B2B" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="1080" y="443" class="lab">score</text>
+
+  <!-- ===== Missions ===== -->
+  <g>
+    <rect x="30" y="740" width="370" height="110" rx="14" fill="#fff" stroke="#DDD" stroke-width="2"/>
+    <circle cx="75" cy="795" r="22" class="badge"/><text x="75" y="802" class="bn" font-size="20">1</text>
+    <text x="112" y="788" font-size="20" font-weight="700" fill="#1F1F1F">Deploy your model</text>
+    <text x="112" y="815" class="s">modal deploy serve.py</text>
+
+    <rect x="420" y="740" width="370" height="110" rx="14" fill="#fff" stroke="#DDD" stroke-width="2"/>
+    <circle cx="465" cy="795" r="22" class="badge"/><text x="465" y="802" class="bn" font-size="20">2</text>
+    <text x="502" y="788" font-size="20" font-weight="700" fill="#1F1F1F">Build the gateway</text>
+    <text x="502" y="815" class="s">your policy, run with Docker Compose</text>
+
+    <rect x="810" y="740" width="370" height="110" rx="14" fill="#fff" stroke="#DDD" stroke-width="2"/>
+    <circle cx="855" cy="795" r="22" class="badge"/><text x="855" y="802" class="bn" font-size="20">3</text>
+    <text x="892" y="788" font-size="20" font-weight="700" fill="#1F1F1F">Break it, measure it</text>
+    <text x="892" y="815" class="s">failure drill and load test</text>
+
+    <rect x="1200" y="740" width="370" height="110" rx="14" fill="#fff" stroke="#DDD" stroke-width="2"/>
+    <circle cx="1245" cy="795" r="22" class="badge"/><text x="1245" y="802" class="bn" font-size="20">4</text>
+    <text x="1282" y="788" font-size="20" font-weight="700" fill="#1F1F1F">Rebuild it from git</text>
+    <text x="1282" y="815" class="s">commit, clone, start a fresh copy</text>
+  </g>
+</svg>

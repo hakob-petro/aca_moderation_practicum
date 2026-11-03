@@ -8,6 +8,8 @@ laptop → SSH tunnel → your Docker gateway on the class server → vLLM on Mo
                        approve / review / remove                 base + LoRA
 ```
 
+![Seminar 5 architecture: laptop, class server gateway, model on Modal](architecture.png)
+
 **vLLM** loads a model once and batches requests from many callers. Its
 OpenAI-compatible API lets us use the OpenAI Python client with our own model;
 these requests go to Modal, not to OpenAI. The **gateway** is your small web
