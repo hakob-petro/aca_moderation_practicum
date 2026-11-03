@@ -2,8 +2,8 @@
 
 **Mode:** by hand · **Time:** 25 minutes
 
-Everything you build in this course lives in your own GitHub repository. Today
-you create it and add one file to it, the way professional teams do: on a
+Today you practise saving work in your own GitHub repository. You create it
+and add one file to it, the way professional teams do: on a
 branch, through a pull request that is reviewed and then merged.
 
 You are the only person in your repository, so you will review and merge your

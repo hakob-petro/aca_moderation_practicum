@@ -25,13 +25,15 @@ docker info
 echo "$MYPORT"
 modal profile current
 ls ~/s4/results
-ls ~/aca-work/.git
 cd ~/course/seminar_5
 ```
 
-If `~/aca-work` is missing, clone your private repository again:
-`cd ~ && gh repo clone YOUR-GITHUB-USERNAME/aca-work`. If you never made it,
-follow [Seminar 1 mission 3](../seminar_1/mission_3.md).
+Today's work goes in `~/s5`; `./prepare` creates `~/s5/gateway` for your
+service. No personal GitHub repository or GitHub login is required. Mission 4
+creates a local Git repository to practise rebuilding from committed code.
+
+Already prepared with a different path? Run `./prepare` to see the saved gateway
+path and use it in place of `~/s5/gateway`. Your existing files are kept.
 
 Your gateway uses `$MYPORT+2`; the recovery drill uses `$MYPORT+3`. Seminar 2's
 Open WebUI can keep using `$MYPORT+1`. Nothing needs `sudo` or a firewall change.
@@ -55,8 +57,8 @@ are behind. A failed check prints what still needs fixing; finish it at home.
 
 | Location | Contents |
 |---|---|
-| `~/aca-work/deploy/` | your gateway source, Dockerfile and Compose configuration; commit these |
-| `~/aca-work/deploy/.env` | private keys and runtime settings; ignored by git and excluded from the image |
+| `~/s5/gateway/` | your gateway source, Dockerfile and Compose configuration; commit these |
+| `~/s5/gateway/.env` | private keys and runtime settings; ignored by git and excluded from the image |
 | `~/s5/serve.json`, `~/s5/model.env` | model deployment settings and its private key |
 | your `aca-s5-…` Modal volume | a hash-checked copy of the Seminar 4 adapter |
 | `~/s5/calls.jsonl`, `failure.json`, `load.json`, `recovery.json` | measurements and drill results |
@@ -77,7 +79,7 @@ deployment can scale to zero, but repeated requests keep its GPU billable.
 Do not set `min_containers=1` for this exercise.
 
 You may leave the small CPU gateway running, or stop it with
-`cd ~/aca-work/deploy && docker compose down`. Before using it next time,
+`cd ~/s5/gateway && docker compose down`. Before using it next time,
 redeploy `serve.py`, warm the model with `uv run client.py`, and start Compose.
 
 **Homework:** [Connect your model to Open WebUI](homework/openwebui.md).

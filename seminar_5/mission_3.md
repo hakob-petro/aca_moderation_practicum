@@ -31,12 +31,12 @@ both the workload and its error count.
    stopping another student's shared model. The drill restores the real URL
    and normal deadline even when a check fails or you press Ctrl+C.
    If the shell itself is killed, restore manually with
-   `cd ~/aca-work/deploy && docker compose up -d --force-recreate gateway`.
+   `cd ~/s5/gateway && docker compose up -d --force-recreate gateway`.
 
 2. **Read a log line:**
 
    ```bash
-   cd ~/aca-work/deploy
+   cd ~/s5/gateway
    docker compose logs --tail 15
    ```
 

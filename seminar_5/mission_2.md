@@ -9,7 +9,7 @@ failure contract. A caller sends a rule and comment, and gets a score plus
 1. **Open your starter:**
 
    ```bash
-   cd ~/aca-work/deploy
+   cd ~/s5/gateway
    ls -a
    less app.py
    ```
@@ -65,7 +65,7 @@ failure contract. A caller sends a rule and comment, and gets a score plus
    Open http://localhost:8000/docs. The interactive API describes `/moderate`.
    To try it, enter `Bearer YOUR_GATEWAY_KEY` in the `authorization` header
    field, and a JSON body with `rule` and `comment`. Read the key locally in
-   `nano ~/aca-work/deploy/.env`; close the editor after copying it. The model
+   `nano ~/s5/gateway/.env`; close the editor after copying it. The model
    key stays between your gateway and Modal.
 
 ## Two “why” questions

@@ -29,6 +29,7 @@ def main(run: str = "", student: str = "", workdir: str = "", port: int = 0):
     existing = SETUP / "serve.json"
     if existing.exists():
         print(f"Already prepared: {existing}. Your edits and keys were kept.")
+        print(f"Gateway: {json.loads(existing.read_text())['gateway']}")
         print("Continue with modal deploy serve.py. Use a separate S5_HOME for a different snapshot.")
         return
     runs = {p.stem: json.loads(p.read_text()) for p in (Path.home() / "s4/results").glob("*.json")}
@@ -38,11 +39,9 @@ def main(run: str = "", student: str = "", workdir: str = "", port: int = 0):
         run = max(runs, key=lambda name: runs[name].get("auc", 0))
     if not re.fullmatch(r"[A-Za-z0-9_.-]+", run):
         raise SystemExit("RUN must be a directory name, without slashes")
-    work = Path(workdir).expanduser().resolve() if workdir else Path.home() / "aca-work/deploy"
+    work = (Path(workdir).expanduser() if workdir else SETUP / "gateway").resolve()
     if work.exists() and any(work.iterdir()):
         raise SystemExit(f"{work} already contains files; choose an empty --workdir PATH")
-    if not workdir and not (work.parent / ".git").exists():
-        raise SystemExit("Clone your private aca-work repo to ~/aca-work first (Seminar 1 mission 3).")
     port = port or (int(os.environ["MYPORT"]) + 2 if "MYPORT" in os.environ else 18082)
     if not 1024 <= port <= 65534:
         raise SystemExit("Use an unprivileged port between 1024 and 65534")

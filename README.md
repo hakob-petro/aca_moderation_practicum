@@ -139,5 +139,7 @@ small part of the credit, as long as you follow three rules:
 
 ## At the end of the course
 
-Stop your Modal apps. Everything you built stays in your own GitHub
-repository.
+Stop your Modal apps. Your exercise files are on the class server, and your
+trained adapters are in Modal volumes. Before the class server is retired,
+download the files you want to keep. You can also push source code to your own
+GitHub repository; keep API keys out of Git.

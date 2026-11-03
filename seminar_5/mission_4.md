@@ -7,23 +7,38 @@ settings can start it again. Today you prove this in a fresh clone and a second
 Compose project on the **same class server**. This is a recovery exercise; it
 does not create a second VM or test a host failure.
 
-1. **Commit the service to your private repo:**
+1. **Create a local Git repository and commit the service:**
+
+   Git records a snapshot of your source files on this server. This step needs
+   no GitHub account, login, or remote repository.
 
    ```bash
-   cd ~/aca-work
+   cd ~/s5/gateway
+   git init
    git status --short
-   git add deploy/app.py deploy/policy.py deploy/model_client.py deploy/scorer.py \
-     deploy/Dockerfile deploy/requirements.txt deploy/compose.yml \
-     deploy/.dockerignore deploy/.gitignore deploy/.env.example
+   git add app.py policy.py model_client.py scorer.py \
+     Dockerfile requirements.txt compose.yml \
+     .dockerignore .gitignore .env.example
    git diff --cached --stat
    git diff --cached
    git commit -m "Deploy my moderation gateway"
-   git push
    ```
 
    Check the staged files before committing. `.env` must be absent. If git
    says there is nothing to commit, check `git log -1` and continue. Resolve
    any unrelated staged work separately; do not include it by accident.
+
+   If Git reports **Author identity unknown**, set your name and email for
+   this repository, then repeat the commit command:
+
+   ```bash
+   git config user.name "Your Name"
+   git config user.email "you@example.com"
+   git commit -m "Deploy my moderation gateway"
+   ```
+
+   Replace the example name and email with yours. These identify the author
+   of a commit; they do not log you into any service.
 
 2. **Warm the model, then rebuild:**
 
@@ -39,15 +54,15 @@ does not create a second VM or test a host failure.
    port. It sends a real comment, then removes that deployment and its copied
    key file. Your original gateway keeps running.
 
-   Cloning the local repo avoids another GitHub login during the drill. It
-   proves committed source can be reused. Your `git push` is the separate step
-   that puts a copy off the class server.
+   The clone comes directly from your local repository. This proves committed
+   source can be reused. Both copies are on the same server, so this exercise
+   does not give you an off-server backup.
 
 3. **Check both the evidence and the original:**
 
    ```bash
    cat ~/s5/recovery.json
-   cd ~/aca-work/deploy
+   cd ~/s5/gateway
    docker compose ps
    cd ~/course/seminar_5
    ./check 4
@@ -66,6 +81,6 @@ does not create a second VM or test a host failure.
 1. Which things came from git, and which had to be supplied separately?
 2. What would you still need if the whole class server disappeared?
 
-**Bonus:** on an instructor-provided second host, clone the same commit,
-install Docker if needed, supply the keys privately, and start Compose. That
-adds a real host change; do not claim today's same-host drill already tested it.
+**Optional, after class:** push your source code to your own private GitHub
+repository to keep an off-server copy. No mission check requires this. Keep
+`.env` and API keys out of Git.
