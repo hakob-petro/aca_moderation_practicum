@@ -38,9 +38,9 @@ is a database kept on purpose.
    > Read decisions.py and compose.yml. In decisions.py, implement record and
    > set_final exactly as their docstrings say. Use ? placeholders for every
    > value in SQL, never string formatting. In compose.yml: publish container
-   > port 8501 on 127.0.0.1 at ${PORT}; keep /data in a named volume called
+   > port 8501 on 127.0.0.1 at `${PORT}`; keep /data in a named volume called
    > decisions; mark the network gateway as external, with the name
-   > ${GATEWAY_NETWORK}. Change only these two files. Explain each change.
+   > `${GATEWAY_NETWORK}`. Change only these two files. Explain each change.
    > Do not read or print .env; it contains a private key.
 
    Review the changes. An override must never overwrite `model_decision`:
