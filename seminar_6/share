@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+"""Mission 3: put your attacks in the class pool.
+
+    ./share      checks ~/s6/redteam/attacks.txt and copies it to the class pool
+
+Everyone's ./replay sends the whole pool through their own service. Only you
+can change your file in the pool; share again after editing.
+"""
+import os
+import shutil
+import sys
+
+from common import POOL, REDTEAM, read_comments
+
+mine = REDTEAM / "attacks.txt"
+if not mine.exists():
+    sys.exit(f"Write your attacks in {mine} first (mission 3, step 1).")
+items, problems = read_comments(mine)
+if problems:
+    sys.exit("Fix these lines, then share again:\n  " + "\n  ".join(problems))
+if not 5 <= len(items) <= 10:
+    sys.exit(f"Write 5 to 10 attacks; {mine} has {len(items)}.")
+if not POOL.is_dir():
+    sys.exit(f"No class pool on this machine ({POOL}). Ask the instructor.")
+target = POOL / f"{os.environ.get('USER', 'student')}.txt"
+shutil.copyfile(mine, target)
+os.chmod(target, 0o644)
+others = len([p for p in POOL.glob("*.txt") if p != target])
+print(f"Shared {len(items)} attacks. The pool now has your file and {others} others.")

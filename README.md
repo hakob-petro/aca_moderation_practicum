@@ -53,7 +53,7 @@ you a GPU for exactly as long as your code runs.
 Each session's mission cards and checks are in its folder:
 [seminar_1](seminar_1/README.md), [seminar_2](seminar_2/README.md),
 [seminar_3](seminar_3/README.md), [seminar_4](seminar_4/README.md),
-[seminar_5](seminar_5/README.md).
+[seminar_5](seminar_5/README.md), [seminar_6](seminar_6/README.md).
 
 For the scoring concepts and measured fine-tuning results, read
 [Evaluating our moderation model](materials/seminar_3/yes_no_scores_and_auc.md).

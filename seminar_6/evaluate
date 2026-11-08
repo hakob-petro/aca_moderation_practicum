@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+"""Mission 2: the vote of similar past cases against your model, on the 401 dev comments.
+
+Runs evaluate.py inside your console container (about a minute with a warm
+model) and saves the result to ~/s6/evaluate.json.
+"""
+import json
+
+from common import SETUP, in_console
+
+result = in_console("evaluate.py")
+(SETUP / "evaluate.json").write_text(json.dumps(result, indent=2) + "\n")
+print(json.dumps(result, indent=2))
+model, vote = result["model_auc"]["mean"], result["vote_auc"]["mean"]
+print(f"\nDev AUC: your model {model}, the vote of the 10 nearest past cases {vote}.")
+print(f"The model approved {result['model_approved']} comments, {result['approved_but_broke_the_rule']} of "
+      f"which broke the rule. The precedent rule sent {result['sent_to_review_by_precedent']} of them to "
+      f"review ({result['of_which_broke_the_rule']} broke the rule).")

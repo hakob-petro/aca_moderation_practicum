@@ -30,8 +30,9 @@ traffic stops. The wait to load the model is a **cold start**.
    ```
 
    Read `serve.py` while it builds. Find the GPU, the adapter path,
-   `max_containers=1`, and `scaledown_window=60`. `base` and `moderator` share
-   one base model in GPU memory; the latter applies your LoRA adapter.
+   `max_containers=1`, and the 60-second `scaledown_window`. `base` and
+   `moderator` share one base model in GPU memory; the latter applies your
+   LoRA adapter.
 
    Copy the HTTPS endpoint printed next to `model`, then save it:
 

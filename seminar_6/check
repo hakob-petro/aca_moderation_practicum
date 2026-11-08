@@ -1,0 +1,193 @@
+#!/usr/bin/env python3
+"""Run ./check 1, 2, 3 or 4. Checks read your console's database and containers."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import time
+
+from common import CONSOLE, POOL, REDTEAM, SETUP, compose, env, in_console, read_comments, status
+
+passed = failed = 0
+HERE = Path(__file__).resolve().parent
+GATEWAY = {"request_id": "test", "p_yes": 0.5, "decision": "review",
+           "thresholds": {"approve_below": 0.3, "remove_at": 0.8}}
+
+
+def check(ok, message):
+    global passed, failed
+    passed += bool(ok)
+    failed += not ok
+    print(f"{'PASS' if ok else 'FAIL'}  {message}")
+
+
+def module(name):
+    """Import one of your console files here, outside the container."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(name, CONSOLE / f"{name}.py")
+    loaded = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(loaded)
+    return loaded
+
+
+def database():
+    """Counts from the decision log inside the running console."""
+    script = ("import json, decisions; con = decisions.connect(); c = decisions.counts(con); "
+              "q = lambda sql: con.execute(sql).fetchone()[0]; "
+              "c['with_request_id'] = q(\"SELECT COUNT(*) FROM decisions WHERE request_id IS NOT NULL\"); "
+              "c['with_vote'] = q(\"SELECT COUNT(*) FROM decisions WHERE vote IS NOT NULL\"); "
+              "c['ids'] = q(\"SELECT GROUP_CONCAT(id) FROM decisions\"); print(json.dumps(c))")
+    return in_console("-c", script)
+
+
+def container():
+    cid = compose("ps", "-q", "console")
+    return json.loads(subprocess.check_output(["docker", "inspect", cid]))[0] if cid else None
+
+
+def healthy(url, seconds=90):
+    for _ in range(seconds):
+        if status(url, timeout=2) == 200:
+            return True
+        time.sleep(1)
+    return False
+
+
+def decisions_contract():
+    decisions = module("decisions")
+    with tempfile.TemporaryDirectory() as tmp:
+        con = decisions.connect(str(Path(tmp) / "test.db"))
+        auto = decisions.record(con, "inbox", "legal", "It's fine'); DROP TABLE decisions;--",
+                                {**GATEWAY, "decision": "remove"}, "remove")
+        wait = decisions.record(con, "inbox", "advertising", "Visit my shop", GATEWAY, "review", 0.4, 0.2)
+        rows = {r["id"]: dict(r) for r in con.execute("SELECT * FROM decisions")}
+        check(rows[auto]["final"] == "remove" and rows[auto]["decided_by"] == "model"
+              and rows[auto]["comment"].endswith("DROP TABLE decisions;--"),
+              "record: an automatic decision is final at once; quotes stored as text")
+        check(rows[wait]["final"] is None and rows[wait]["decided_by"] is None
+              and rows[wait]["request_id"] == "test" and rows[wait]["vote"] == 0.4,
+              "record: a review waits for a human; gateway fields stored")
+        decisions.set_final(con, auto, "approve")
+        row = dict(con.execute("SELECT * FROM decisions WHERE id = ?", (auto,)).fetchone())
+        check(row["final"] == "approve" and row["decided_by"] == "human" and row["model_decision"] == "remove"
+              and row["routed"] == "remove", "set_final: a human override keeps the model's decision")
+        errors = []
+        for bad in [(auto, "review"), (10**6, "remove")]:
+            try:
+                decisions.set_final(con, *bad)
+            except (ValueError, KeyError) as error:
+                errors.append(type(error))
+        check(errors == [ValueError, KeyError], "set_final rejects 'review' and an unknown id")
+
+
+def main(mission):
+    settings = env()
+    url = f"http://127.0.0.1:{settings['PORT']}"
+    if mission == "1":
+        decisions_contract()
+        info = container()
+        check(info is not None and info["State"]["Running"], "the console container runs")
+        if not info:
+            return
+        bindings = info["HostConfig"]["PortBindings"].get("8501/tcp", [])
+        check(bool(bindings) and all(b["HostIp"] == "127.0.0.1" for b in bindings), "port bound to loopback only")
+        mounts = [m for m in info["Mounts"] if m["Destination"] == "/data"]
+        check(bool(mounts) and mounts[0]["Type"] == "volume", "/data is a named volume")
+        check(settings["GATEWAY_NETWORK"] in info["NetworkSettings"]["Networks"], "joined the gateway's network")
+        check(healthy(url + "/_stcore/health", 30), "the console answers on your port")
+        counts = database()
+        check(counts["with_request_id"] >= 10, f"10 decisions from the gateway logged ({counts['with_request_id']})")
+        check(counts["by_human"] >= 1, "a human decided at least one comment")
+        check(counts["overrides"] >= 1, "a human overrode at least one automatic decision")
+        print("      restarting the console project: docker compose down, then up...")
+        compose("down")
+        compose("up", "-d")
+        healthy(url + "/_stcore/health")
+        check(database()["ids"] == counts["ids"], "the decision log survived docker compose down")
+    elif mission == "2":
+        memory = module_in_container_nearest()
+        check(memory, "nearest: most similar first, k results, plain floats")
+        routing = module("routing")
+        cases = [("approve", .85, .85, "review"), ("approve", .849, .85, "approve"), ("remove", 1, .85, "remove"),
+                 ("review", .99, .85, "review"), ("approve", 0, .85, "approve"), ("approve", .6, .5, "review")]
+        check(all(routing.route(d, p, at) == want for d, p, at, want in cases),
+              "route: approve goes to review at or above the precedent; uses its arguments")
+        check(database()["with_vote"] >= 1, "the console logged a decision with a vote (moderate after rebuilding)")
+        path = SETUP / "evaluate.json"
+        result = json.loads(path.read_text()) if path.exists() else {}
+        check(result.get("comments") == 401 and 0.6 < result["vote_auc"]["mean"] < 1
+              and 0.6 < result["model_auc"]["mean"] < 1, "vote and model AUC measured (./evaluate)")
+        if result:
+            print(f"      dev AUC: model {result['model_auc']['mean']}, vote {result['vote_auc']['mean']}")
+    elif mission == "3":
+        mine = REDTEAM / "attacks.txt"
+        items, problems = read_comments(mine) if mine.exists() else ([], ["missing"])
+        check(5 <= len(items) <= 10 and not problems, "5 to 10 well-formed attacks in ~/s6/redteam/attacks.txt")
+        shared = POOL / f"{os.environ.get('USER', '')}.txt"
+        check(shared.exists() and shared.read_text() == mine.read_text(), "your attacks are in the class pool (./share)")
+        runs = {name: json.loads((REDTEAM / f"{name}.json").read_text())
+                for name in ("before", "after", "paraphrases") if (REDTEAM / f"{name}.json").exists()}
+        slipped = lambda name: [(r["rule"], r["comment"]) for r in runs[name]["results"] if r.get("console") == "approve"]
+        errors = lambda name: sum("error" in r for r in runs[name]["results"])
+        check("before" in runs and not errors("before") and len(runs["before"]["results"]) >= 5,
+              "the pool replayed without errors (./replay)")
+        if "before" in runs:
+            if slipped("before"):
+                check("after" in runs and runs["after"]["lessons"] > 0 and not errors("after"),
+                      "memory taught and the pool replayed again (./replay --teach, ./replay)")
+                check("after" in runs and not set(slipped("before")) & set(slipped("after")),
+                      "every taught attack is now caught")
+            else:
+                print("      nothing slipped through: your service caught the whole pool")
+        check("paraphrases" in runs and len(runs["paraphrases"]["results"]) >= 3 and not errors("paraphrases"),
+              "three paraphrases replayed (./replay paraphrases.txt)")
+        for name, run in runs.items():
+            print(f"      {name}: {len(slipped(name))} of {len(run['results'])} slipped through")
+    elif mission == "4":
+        serve = json.loads((Path.home() / "s5" / "serve.json").read_text())
+        apps = subprocess.run(["modal", "app", "list", "--json"], capture_output=True, text=True)
+        mine = [a for a in json.loads(apps.stdout or "[]") if a["description"] == serve["app"]]
+        check(apps.returncode == 0 and all(a["state"] != "deployed" for a in mine),
+              f"your Modal app {serve['app']} is stopped")
+        git = lambda *a: subprocess.run(["git", *a], cwd=CONSOLE, capture_output=True, text=True)
+        tracked = git("ls-files").stdout.split()
+        check(git("rev-parse", "HEAD").returncode == 0 and "app.py" in tracked and "compose.yml" in tracked,
+              "the console is committed")
+        check(".env" not in tracked and not git("status", "--porcelain", "--", ".").stdout.strip(),
+              ".env not tracked; nothing left uncommitted")
+    else:
+        raise ValueError("Usage: ./check 1|2|3|4")
+
+
+def module_in_container_nearest():
+    """nearest() needs numpy, which lives in the console image: test it there."""
+    script = (
+        "import json, numpy as np, memory\n"
+        "v = np.array([[1, 0], [0.6, 0.8], [0, 1], [0.8, 0.6]])\n"
+        "r = memory.nearest(v, np.array([1.0, 0.0]), 3)\n"
+        "s = memory.nearest(v[:2], np.array([0.0, 1.0]), 5)\n"
+        "ok = [i for i, _ in r] == [0, 3, 1] and abs(r[1][1] - 0.8) < 1e-9 and [i for i, _ in s] == [1, 0]\n"
+        "ok = ok and all(type(i) is int and type(x) is float for i, x in r + s)\n"
+        "print(json.dumps(bool(ok)))\n")
+    try:
+        return in_console("-c", script)
+    except SystemExit as error:
+        print(str(error).splitlines()[-2] if str(error) else "")
+        return False
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        sys.exit("Usage: ./check 1|2|3|4")
+    try:
+        main(sys.argv[1])
+    except (FileNotFoundError, KeyError, subprocess.CalledProcessError) as error:
+        print(f"FAIL  {type(error).__name__}: {error}")
+        failed += 1
+    except NotImplementedError as error:
+        print(f"FAIL  {error}")
+        failed += 1
+    print(f"\n{passed} passed, {failed} failed")
+    sys.exit(1 if failed else 0)

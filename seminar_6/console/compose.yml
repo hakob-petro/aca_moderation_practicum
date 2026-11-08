@@ -1,0 +1,30 @@
+services:
+  console:
+    build: .
+    env_file: .env
+    # TODO: bind container port 8501 to host 127.0.0.1:${PORT}
+    ports:
+      - "TODO"
+    # TODO: keep /data, the decision log, in a named volume called decisions
+    networks:
+      - gateway
+    restart: unless-stopped
+    mem_limit: 768m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+# TODO: declare the named volume decisions
+
+networks:
+  gateway:
+    # TODO: Seminar 5's gateway already created this network. Mark it external,
+    # with the name ${GATEWAY_NETWORK}, so this project joins it.

@@ -11,6 +11,12 @@ import modal
 
 SETUP = Path(os.environ.get("S5_HOME", str(Path.home() / "s5")))
 config = json.loads((SETUP / "serve.json").read_text() if modal.is_local() else os.environ["S5_CONFIG"])
+if modal.is_local():
+    # Seconds without requests before the GPU is released. Seminar 6's console
+    # is used with pauses, so it deploys with ACA_SCALEDOWN=1200 for the class.
+    config["scaledown"] = int(os.environ.get("ACA_SCALEDOWN", "60"))
+    if not 60 <= config["scaledown"] <= 1200:
+        raise SystemExit("ACA_SCALEDOWN must be between 60 and 1200 seconds")
 app = modal.App(config["app"])
 image = (modal.Image.debian_slim(python_version="3.12").pip_install("vllm==0.32.0")
          .env({"S5_CONFIG": json.dumps(config)}))
@@ -29,7 +35,7 @@ secrets = [modal.Secret.from_dict(secret_values)]
     volumes={"/weights": weights, "/root/.cache/huggingface": cache},
     secrets=secrets,
     timeout=600,
-    scaledown_window=60,
+    scaledown_window=config.get("scaledown", 60),
     max_containers=1,
 )
 @modal.concurrent(max_inputs=16)

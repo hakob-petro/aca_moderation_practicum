@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""Mission 3: send red-team comments through your console's pipeline.
+
+    ./replay                    the class pool: everyone's shared attacks
+    ./replay --teach            remember the pool attacks that slipped through, as removed cases
+    ./replay paraphrases.txt    your own file in ~/s6/redteam
+
+A comment slipped through when the console approved it: nobody looked at it.
+Results go to ~/s6/redteam (before.json, after.json or the file's name) and a
+summary to the class table, read by report.py. Replays are not logged as
+decisions; only --teach changes your decision log.
+"""
+import json
+import os
+from pathlib import Path
+import sys
+
+from common import POOL, REDTEAM, in_console, read_comments
+
+me = os.environ.get("USER", "student")
+REDTEAM.mkdir(parents=True, exist_ok=True)
+
+
+def pool():
+    items, seen = [], set()
+    for path in sorted(POOL.glob("*.txt")):
+        comments, _ = read_comments(path)
+        for item in comments[:10]:
+            if (item["rule"], item["comment"]) not in seen:
+                seen.add((item["rule"], item["comment"]))
+                items.append({"author": path.stem, **item})
+    return items
+
+
+def summary(results):
+    done = [r for r in results if "error" not in r]
+    return {"comments": len(results), "errors": len(results) - len(done),
+            "slipped": sum(r["console"] == "approve" for r in done),
+            "to_review": sum(r["console"] == "review" for r in done),
+            "removed": sum(r["console"] == "remove" for r in done)}
+
+
+def share(name, result):
+    table = POOL / "results"
+    if not table.is_dir():
+        return
+    path = table / f"{me}.json"
+    shared = json.loads(path.read_text()) if path.exists() else {}
+    shared[name] = {**summary(result["results"]),
+                    "slipped_comments": [[r["author"], r["comment"]] for r in result["results"]
+                                         if r.get("console") == "approve"]}
+    path.write_text(json.dumps(shared, indent=1) + "\n")
+    os.chmod(path, 0o644)
+
+
+args = sys.argv[1:]
+if args == ["--teach"]:
+    before = REDTEAM / "before.json"
+    if not before.exists():
+        sys.exit("Replay the pool first: ./replay")
+    slipped = [r for r in json.loads(before.read_text())["results"] if r.get("console") == "approve"]
+    taught = in_console("replay.py", "--teach", stdin=json.dumps(slipped))["taught"]
+    print(f"Your memory now holds {taught} more removed cases: the pool attacks that slipped through.")
+    print("Replay the pool again: ./replay")
+    sys.exit()
+if len(args) > 1 or (args and args[0].startswith("-")):
+    sys.exit(__doc__)
+
+if args:
+    path = Path(args[0]) if Path(args[0]).exists() else REDTEAM / args[0]
+    items, problems = read_comments(path)
+    if problems:
+        sys.exit("Fix these lines first:\n  " + "\n  ".join(problems))
+    items = [{"author": me, **item} for item in items]
+    name = path.stem
+else:
+    items = pool()
+    if not items:
+        sys.exit(f"The class pool ({POOL}) is empty. Share your attacks first: ./share")
+    name = None
+
+print(f"Replaying {len(items)} comments through your gateway and memory...", flush=True)
+result = in_console("replay.py", stdin=json.dumps(items))
+if name is None:
+    name = "after" if result["lessons"] else "before"
+(REDTEAM / f"{name}.json").write_text(json.dumps(result, indent=1) + "\n")
+share(name, result)
+counts = summary(result["results"])
+print(f"{name}: {counts['slipped']} of {counts['comments']} slipped through, {counts['to_review']} "
+      f"went to a human, {counts['removed']} were removed, {counts['errors']} errors.")
+print(f"  {'console':8} {'model':8} {'p_yes':>5}  {'removed case':>12}")
+for r in result["results"]:
+    if "error" in r:
+        print(f"  {'error':8} {r['error'][:60]}")
+        continue
+    who = {"approve": "  <- slipped through", "review": ""}.get(r["console"], "")
+    if r["model"] == "approve" and r["console"] == "review":
+        who = "  <- memory caught it"
+    nearest = "–" if r["precedent"] is None else f"{r['precedent']:.2f}"
+    print(f"  {r['console']:8} {r['model']:8} {r['p_yes']:5.2f}  {nearest:>12}  "
+          f"[{r['author']}] {r['rule']}: {r['comment'][:60]}{who}")
+if counts["errors"]:
+    print("Errors mean no decision: warm your model (uv run client.py in ~/course/seminar_5) and replay.")

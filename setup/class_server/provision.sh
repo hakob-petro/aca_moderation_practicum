@@ -60,6 +60,8 @@ touch /etc/class/students
 # Session 4: everyone's results, for the class table. Anyone may add a file;
 # only its owner can change or delete it (the sticky bit, as on /tmp).
 install -d -m 1777 /srv/aca/results
+# Session 6: the red-team pool and everyone's replay results, the same way.
+install -d -m 1777 /srv/aca/redteam /srv/aca/redteam/results
 
 cat > /usr/local/sbin/class-sync-keys <<'EOF'
 #!/usr/bin/env bash

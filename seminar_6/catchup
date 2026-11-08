@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+case "${1:-}" in
+  1) echo "The console needs your Seminar 5 gateway running and your model deployed (README, Before you start)."
+     echo "No working model? Ask the instructor for the shared model URL and key: python3 ~/course/seminar_5/configure.py URL."
+     echo "If the agent's decisions.py or compose.yml fails ./check 1, ask the instructor for the reference versions."
+     echo "Never put a private key in an agent prompt. Work in ~/s6/console." ;;
+  2) echo "Mission 2 needs mission 1's console. Ask your agent to finish nearest() and route(),"
+     echo "or ask the instructor for the reference versions. Rebuild: docker compose up --build -d."
+     echo "You can write your mission 3 attacks while you wait: they need no console." ;;
+  3) echo "Write and share your attacks now (steps 1 and 2): others replay them even if your console is not ready."
+     echo "Replaying needs missions 1 and 2. Finish them at home; the class pool stays on the server." ;;
+  4) echo "Whatever else is unfinished, stop your Modal app today: modal app list, then modal app stop APP_ID."
+     echo "Then commit ~/s6/console (step 3) so your work survives the class server." ;;
+  *) echo "Usage: ./catchup 1|2|3|4"; exit 2 ;;
+esac

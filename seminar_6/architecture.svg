@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2B2B2B"/>
+    </marker>
+    <style>
+      .h { font-size: 22px; font-weight: 700; letter-spacing: 1.5px; fill: #2B2B2B; }
+      .sub { font-size: 16px; fill: #5F5F5F; }
+      .t { font-size: 22px; font-weight: 700; fill: #1F1F1F; }
+      .b { font-size: 17px; fill: #2B2B2B; }
+      .s { font-size: 15px; fill: #666; }
+      .m { font-size: 16px; font-family: Menlo, Consolas, monospace; fill: #2B2B2B; }
+      .lab { font-size: 16px; fill: #2B2B2B; text-anchor: middle; }
+      .badge { fill: #D9822B; }
+      .bn { font-size: 17px; font-weight: 700; fill: #fff; text-anchor: middle; }
+      .cyl { fill: #fff; stroke: #6E9A6E; stroke-width: 2; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#FBFBF8"/>
+
+  <text x="50" y="62" font-size="34" font-weight="700" fill="#1F1F1F">Seminar 6: from service to product</text>
+  <text x="50" y="96" font-size="18" fill="#5F5F5F">A moderator works through the console; the model decides, a person decides the hard cases, and every decision is kept</text>
+
+  <!-- ===== Laptop ===== -->
+  <rect x="30" y="130" width="280" height="570" rx="16" fill="#EDF1F7" stroke="#9AA9BC" stroke-width="2"/>
+  <text x="52" y="172" class="h">YOUR LAPTOP</text>
+  <text x="52" y="197" class="sub">the moderator</text>
+  <rect x="52" y="240" width="236" height="305" rx="12" fill="#fff" stroke="#7D8DA3" stroke-width="2"/>
+  <text x="70" y="280" class="t">Browser</text>
+  <text x="70" y="307" class="m">localhost:8501</text>
+  <line x1="70" y1="330" x2="270" y2="330" stroke="#DDD"/>
+  <text x="70" y="364" class="b">moderates the inbox</text>
+  <text x="70" y="394" class="b">decides the reviews</text>
+  <text x="70" y="424" class="b">overrides mistakes</text>
+  <text x="70" y="454" class="b">reads similar cases</text>
+
+  <!-- ===== Class server ===== -->
+  <rect x="420" y="130" width="730" height="570" rx="16" fill="#EDF5ED" stroke="#93B193" stroke-width="2"/>
+  <text x="444" y="172" class="h">CLASS SERVER</text>
+  <text x="444" y="197" class="sub">two Compose projects on one Docker network</text>
+
+  <!-- console -->
+  <rect x="444" y="240" width="380" height="305" rx="12" fill="#fff" stroke="#6E9A6E" stroke-width="2"/>
+  <text x="464" y="280" class="t">Moderator console</text>
+  <text x="464" y="305" class="s">Streamlit, in ~/s6/console</text>
+  <text x="464" y="345" class="b" font-weight="700">Inbox → Review queue → Log</text>
+  <text x="464" y="378" class="b">approve and remove are final at once;</text>
+  <text x="464" y="400" class="b">review waits for a person</text>
+  <text x="464" y="434" class="b">shows the 3 most similar past cases</text>
+  <text x="464" y="468" class="b">an approval that copies a removed</text>
+  <text x="464" y="490" class="b">comment goes to review</text>
+  <circle cx="768" cy="242" r="17" class="badge"/><text x="768" y="248" class="bn">1</text>
+  <circle cx="808" cy="242" r="17" class="badge"/><text x="808" y="248" class="bn">2</text>
+
+  <!-- gateway -->
+  <rect x="900" y="240" width="225" height="305" rx="12" fill="#fff" stroke="#6E9A6E" stroke-width="2" stroke-dasharray="6 5"/>
+  <text x="918" y="280" class="t">Your gateway</text>
+  <text x="918" y="305" class="s">from Seminar 5</text>
+  <text x="918" y="345" class="b">checks the key</text>
+  <text x="918" y="375" class="b">asks the model</text>
+  <text x="918" y="405" class="b">applies the policy</text>
+  <text x="918" y="450" class="s">approve / review /</text>
+  <text x="918" y="470" class="s">remove, or an error:</text>
+  <text x="918" y="490" class="s">never a guess</text>
+
+  <!-- decision log cylinder -->
+  <line x1="545" y1="592" x2="545" y2="553" stroke="#2B2B2B" stroke-width="2.5" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+  <path d="M455,604 v52 a90,13 0 0 0 180,0 v-52" class="cyl"/>
+  <ellipse cx="545" cy="604" rx="90" ry="13" class="cyl"/>
+  <text x="545" y="642" font-size="17" font-weight="700" fill="#2B2B2B" text-anchor="middle">decision log</text>
+  <text x="545" y="688" class="s" text-anchor="middle">SQLite on a Docker volume</text>
+  <circle cx="625" cy="596" r="17" class="badge"/><text x="625" y="602" class="bn">1</text>
+
+  <!-- memory cylinder -->
+  <line x1="740" y1="592" x2="740" y2="553" stroke="#2B2B2B" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <path d="M655,604 v52 a85,13 0 0 0 170,0 v-52" class="cyl"/>
+  <ellipse cx="740" cy="604" rx="85" ry="13" class="cyl"/>
+  <text x="740" y="642" font-size="17" font-weight="700" fill="#2B2B2B" text-anchor="middle">memory</text>
+  <text x="740" y="688" class="s" text-anchor="middle">past cases + your decisions</text>
+  <line x1="637" y1="635" x2="652" y2="635" stroke="#2B2B2B" stroke-width="2" marker-end="url(#arrow)"/>
+  <circle cx="815" cy="596" r="17" class="badge"/><text x="815" y="602" class="bn">2</text>
+
+  <!-- red team pool -->
+  <rect x="900" y="582" width="225" height="100" rx="12" fill="#fff" stroke="#D9822B" stroke-width="2" stroke-dasharray="6 5"/>
+  <text x="918" y="611" class="m" font-weight="700">/srv/aca/redteam</text>
+  <text x="918" y="638" class="b">the class's attacks</text>
+  <text x="918" y="664" class="s"><tspan font-family="Menlo, Consolas, monospace" fill="#B5651D">./replay</tspan> sends them in</text>
+  <path d="M900,631 L862,631 L862,520 L830,520" fill="none" stroke="#D9822B" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <circle cx="1112" cy="584" r="17" class="badge"/><text x="1112" y="590" class="bn">3</text>
+
+  <!-- ===== Modal ===== -->
+  <rect x="1260" y="130" width="310" height="570" rx="16" fill="#F4EEF7" stroke="#AE9BBE" stroke-width="2"/>
+  <text x="1282" y="172" class="h">MODAL</text>
+  <text x="1282" y="197" class="sub">cloud GPU</text>
+  <rect x="1282" y="240" width="266" height="305" rx="12" fill="#fff" stroke="#8C74A0" stroke-width="2"/>
+  <text x="1300" y="280" class="t">Your model</text>
+  <text x="1300" y="305" class="s">vLLM: base + your LoRA</text>
+  <text x="1300" y="350" class="b">awake 20 idle minutes</text>
+  <text x="1300" y="372" class="s">for class: ACA_SCALEDOWN</text>
+  <text x="1300" y="418" class="b">a GPU costs money</text>
+  <text x="1300" y="440" class="s">while it is awake</text>
+  <text x="1300" y="486" class="b">stopped at the end</text>
+  <circle cx="1532" cy="242" r="17" class="badge"/><text x="1532" y="248" class="bn">4</text>
+
+  <!-- ===== Arrows ===== -->
+  <line x1="290" y1="345" x2="440" y2="345" stroke="#2B2B2B" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="365" y="333" class="lab" font-weight="700">SSH tunnel</text>
+  <line x1="442" y1="455" x2="292" y2="455" stroke="#2B2B2B" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <line x1="826" y1="345" x2="896" y2="345" stroke="#2B2B2B" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="862" y="333" font-size="14" fill="#2B2B2B" text-anchor="middle">gateway</text>
+  <text x="862" y="369" font-size="14" fill="#2B2B2B" text-anchor="middle">+ key</text>
+  <line x1="898" y1="455" x2="828" y2="455" stroke="#2B2B2B" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <line x1="1127" y1="345" x2="1278" y2="345" stroke="#2B2B2B" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="1203" y="333" class="lab" font-weight="700">HTTPS</text>
+  <text x="1203" y="369" class="lab">+ model key</text>
+  <line x1="1280" y1="455" x2="1129" y2="455" stroke="#2B2B2B" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="1203" y="443" class="lab">score</text>
+
+  <!-- ===== Missions ===== -->
+  <g>
+    <rect x="30" y="740" width="370" height="110" rx="14" fill="#fff" stroke="#DDD" stroke-width="2"/>
+    <circle cx="75" cy="795" r="22" class="badge"/><text x="75" y="802" class="bn" font-size="20">1</text>
+    <text x="112" y="788" font-size="20" font-weight="700" fill="#1F1F1F">Console and decision log</text>
+    <text x="112" y="815" class="s">review queue, overrides, a volume</text>
+
+    <rect x="420" y="740" width="370" height="110" rx="14" fill="#fff" stroke="#DDD" stroke-width="2"/>
+    <circle cx="465" cy="795" r="22" class="badge"/><text x="465" y="802" class="bn" font-size="20">2</text>
+    <text x="502" y="788" font-size="20" font-weight="700" fill="#1F1F1F">Similar cases</text>
+    <text x="502" y="815" class="s">embeddings, the vote, the precedent</text>
+
+    <rect x="810" y="740" width="370" height="110" rx="14" fill="#fff" stroke="#DDD" stroke-width="2"/>
+    <circle cx="855" cy="795" r="22" class="badge"/><text x="855" y="802" class="bn" font-size="20">3</text>
+    <text x="892" y="788" font-size="20" font-weight="700" fill="#1F1F1F">Red team</text>
+    <text x="892" y="815" class="s">attack, teach the memory, paraphrase</text>
+
+    <rect x="1200" y="740" width="370" height="110" rx="14" fill="#fff" stroke="#DDD" stroke-width="2"/>
+    <circle cx="1245" cy="795" r="22" class="badge"/><text x="1245" y="802" class="bn" font-size="20">4</text>
+    <text x="1282" y="788" font-size="20" font-weight="700" fill="#1F1F1F">Demo and shutdown</text>
+    <text x="1282" y="815" class="s">commit, stop the GPU</text>
+  </g>
+</svg>
